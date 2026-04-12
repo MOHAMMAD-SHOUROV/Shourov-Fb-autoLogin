@@ -6,3 +6,9 @@ id = "d7aTuUuJD1zJwbzN_gx6S"
 uri = "file://attached_assets/Shourov-Fb-AutoLogin-Updated.zip"
 type = "unspecified"
 title = "Shourov-Fb-AutoLogin (Updated)"
+
+[[outputs]]
+id = "j0M9NDcJnz6U6IJJk67k-"
+uri = "file://attached_assets/Shourov-Fb-AutoLogin-Protected.zip"
+type = "unspecified"
+title = "Shourov-Fb-AutoLogin (Protected — Code Hidden)"
