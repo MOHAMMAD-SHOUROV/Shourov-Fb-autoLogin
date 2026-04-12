@@ -94,6 +94,11 @@ export default function App() {
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a0f1e 0%,#0d1b3e 40%,#091428 100%)",fontFamily:"'Segoe UI',Arial,sans-serif",color:"#fff",overflowX:"hidden"}}>
 
+      {/* SEO hidden text for search engines */}
+      <span style={{position:"absolute",width:1,height:1,overflow:"hidden",opacity:0,pointerEvents:"none"}}>
+        নুসাইবা আইটি সেন্টার২৪৭৮ Nusaiba IT Center 2478 Nusaiba IT Shourov FB AutoLogin Facebook Auto Login Chrome Extension
+      </span>
+
       {/* Floating particles */}
       <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:0}}>
         {particles.map((p,i)=>(
@@ -127,6 +132,16 @@ export default function App() {
           <svg width="46" height="46" viewBox="0 0 24 24" fill="white">
             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
           </svg>
+        </div>
+
+        {/* Brand Name */}
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:"clamp(0.9rem,2vw,1.1rem)",fontWeight:800,color:"#6ab0ff",letterSpacing:1,marginBottom:4}}>
+            নুসাইবা আইটি সেন্টার২৪৭৮
+          </div>
+          <div style={{fontSize:"clamp(0.75rem,1.5vw,0.85rem)",color:"rgba(255,255,255,.35)",letterSpacing:2}}>
+            NUSAIBA IT CENTER 2478
+          </div>
         </div>
 
         <div style={{display:"inline-block",background:"rgba(24,119,242,.15)",border:"1px solid rgba(24,119,242,.3)",borderRadius:"100px",padding:"5px 18px",fontSize:13,color:"#6ab0ff",marginBottom:20,letterSpacing:1}}>
@@ -252,6 +267,9 @@ export default function App() {
 
       {/* FOOTER */}
       <footer style={{position:"relative",zIndex:1,borderTop:"1px solid rgba(255,255,255,.07)",padding:"28px 24px",textAlign:"center",color:"rgba(255,255,255,.35)",fontSize:13}}>
+        <div style={{marginBottom:6,fontSize:15,fontWeight:700,color:"rgba(255,255,255,.5)"}}>
+          নুসাইবা আইটি সেন্টার২৪৭৮ &nbsp;|&nbsp; Nusaiba IT Center 2478
+        </div>
         <strong style={{color:"rgba(255,255,255,.6)"}}>Shourov-Fb-AutoLogin</strong>
         &nbsp;·&nbsp; Dev: <a href="https://www.facebook.com/profile.php?id=61588161951831" target="_blank" rel="noreferrer" style={{color:"#6ab0ff"}}>Alihsan Shourov</a>
         &nbsp;·&nbsp; <a href="https://wa.me/8801709281334" target="_blank" rel="noreferrer" style={{color:"#25D366"}}>01709281334</a>
