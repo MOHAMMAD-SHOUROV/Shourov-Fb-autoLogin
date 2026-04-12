@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "d7aTuUuJD1zJwbzN_gx6S"
+uri = "file://attached_assets/Shourov-Fb-AutoLogin-Updated.zip"
+type = "unspecified"
+title = "Shourov-Fb-AutoLogin (Updated)"

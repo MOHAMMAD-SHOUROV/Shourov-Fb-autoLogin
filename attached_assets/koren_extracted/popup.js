@@ -70,15 +70,20 @@
   function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
   function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
 
+  // UID+Pass ২টা দিলেও চলবে, 2FA optional
   function parseLine(line){
     const parts=line.split("\t");
-    if(parts.length>=3){
-      uid=parts[0].replace(/\s/g,"");pass=parts[1].replace(/\s/g,"");
-      secret=parts.slice(2).join(" ").replace(/\s/g,"");
+    if(parts.length>=2 && parts[0].trim() && parts[1].trim()){
+      uid=parts[0].replace(/\s/g,"");
+      pass=parts[1].replace(/\s/g,"");
+      secret=parts.length>=3 ? parts.slice(2).join(" ").replace(/\s/g,"") : "";
       parsedRow.style.display="grid";
-      pUid.textContent=uid||"—";pPass.textContent=pass?"••••••":"—";
-      pSecret.textContent=secret?secret.slice(0,6)+"…":"—";
-      startTOTP();loginBtn.disabled=false;return true;
+      pUid.textContent=uid||"—";
+      pPass.textContent=pass?"••••••":"—";
+      pSecret.textContent=secret?secret.slice(0,6)+"…":"নেই";
+      if(secret){ startTOTP(); } else { totpBox.style.display="none"; }
+      loginBtn.disabled=false;
+      return true;
     }
     parsedRow.style.display="none";totpBox.style.display="none";loginBtn.disabled=true;return false;
   }
@@ -86,52 +91,92 @@
   function updateCountdown(){const s=secsLeft();countdownNum.textContent=s;countdownArc.setAttribute("stroke-dasharray",`${(s/30)*94.2} 94.2`);if(s===30)refreshTOTP();}
   function startTOTP(){if(!secret)return;totpBox.style.display="flex";refreshTOTP();updateCountdown();}
 
+  // === CAPTCHA Auto-Click (checkbox type) ===
+  const CAPTCHA_CLICKER = function(){
+    var clicked = false;
+
+    // reCAPTCHA checkbox iframe এ click করার চেষ্টা
+    try {
+      var frames = document.querySelectorAll('iframe[src*="recaptcha"]');
+      frames.forEach(function(frame){
+        try{
+          var cb = frame.contentDocument && frame.contentDocument.querySelector('.recaptcha-checkbox');
+          if(cb && !clicked){ cb.click(); clicked=true; }
+        }catch(e){}
+      });
+    } catch(e){}
+
+    // সরাসরি checkbox খোঁজা
+    if(!clicked){
+      var checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach(function(cb){
+        if(!clicked && cb.offsetParent !== null){
+          try{ cb.click(); clicked=true; }catch(e){}
+        }
+      });
+    }
+
+    // "I'm not a robot" বা similar div/span ক্লিক করা
+    if(!clicked){
+      var allEls = document.querySelectorAll('div,span,label');
+      allEls.forEach(function(el){
+        if(!clicked){
+          var txt = (el.textContent||'').trim().toLowerCase();
+          if((txt === "i'm not a robot" || txt === "not a robot" || txt === "আমি রোবট নই") && el.offsetParent!==null){
+            try{ el.click(); clicked=true; }catch(e){}
+          }
+        }
+      });
+    }
+
+    // .rc-anchor-center-item বা .recaptcha-checkbox-border
+    if(!clicked){
+      var rcEl = document.querySelector('.rc-anchor-center-item') ||
+                 document.querySelector('.recaptcha-checkbox-border') ||
+                 document.querySelector('[id*="recaptcha-anchor"]');
+      if(rcEl){ try{ rcEl.click(); clicked=true; }catch(e){} }
+    }
+
+    return clicked ? 'clicked' : 'not_found';
+  };
+
   // === PAGE DETECTOR: runs inside the Facebook tab ===
-  // Returns: 'login' | 'captcha' | '2fa' | 'success' | 'unknown'
   const PAGE_DETECTOR = function(){
     var url = window.location.href;
 
-    // Already logged in / home page
-    if(url.match(/facebook\.com\/?$/) || url.includes('/home') || document.querySelector('[aria-label="Facebook"]') && !document.querySelector('input[name="email"]')){
+    if(url.match(/facebook\.com\/?$/) || url.includes('/home')){
       if(!document.querySelector('input[name="email"]') && !document.querySelector('input[name="pass"]')){
         return 'success';
       }
     }
 
-    // Login page
     if(document.querySelector('input[name="email"]') && document.querySelector('input[name="pass"]')){
       return 'login';
     }
 
-    // CAPTCHA: reCAPTCHA iframe present, or "not a robot" text
     var hasCaptcha = !!document.querySelector('iframe[src*="recaptcha"]') ||
                      !!document.querySelector('.g-recaptcha') ||
                      !!document.querySelector('[data-testid="captcha"]') ||
                      (document.body.innerHTML||'').includes('not a robot') ||
                      (document.body.innerHTML||'').includes('reCAPTCHA');
-    if(hasCaptcha){
-      // But also check if 2FA input is present alongside captcha
-      var codeInput = document.querySelector('input[aria-label="Code"]') ||
-                      document.querySelector('input[placeholder="Code"]') ||
-                      document.querySelector('input[name="approvals_code"]');
-      if(!codeInput) return 'captcha';
-    }
 
-    // 2FA: code input field present
-    var codeEl = document.querySelector('input[aria-label="Code"]') ||
-                 document.querySelector('input[placeholder="Code"]') ||
-                 document.querySelector('input[name="approvals_code"]') ||
-                 document.querySelector('input[autocomplete="one-time-code"]') ||
-                 (function(){
-                   var all=Array.from(document.querySelectorAll('input[type="text"],input[type="number"]'));
-                   return all.find(function(el){
-                     return el.offsetParent!==null &&
-                            !el.name.includes('email') &&
-                            !el.name.includes('pass') &&
-                            (document.body.textContent||'').match(/authentication|2FA|two.factor|6.digit|code/i);
-                   });
-                 })();
-    if(codeEl) return '2fa';
+    var codeInput = document.querySelector('input[aria-label="Code"]') ||
+                    document.querySelector('input[placeholder="Code"]') ||
+                    document.querySelector('input[name="approvals_code"]') ||
+                    document.querySelector('input[autocomplete="one-time-code"]');
+
+    if(codeInput) return '2fa';
+    if(hasCaptcha) return 'captcha';
+
+    // 2FA fallback
+    var all2fa = Array.from(document.querySelectorAll('input[type="text"],input[type="number"]'));
+    var found2fa = all2fa.find(function(el){
+      return el.offsetParent!==null &&
+             !el.name.includes('email') &&
+             !el.name.includes('pass') &&
+             (document.body.textContent||'').match(/authentication|2FA|two.factor|6.digit|code/i);
+    });
+    if(found2fa) return '2fa';
 
     return 'unknown';
   };
@@ -176,11 +221,23 @@
     }, function(r){ if(cb) cb(r&&r[0]&&r[0].result); });
   }
 
+  // === CAPTCHA auto-click করা ===
+  function tryCaptchaAutoClick(tabId, onDone){
+    chrome.scripting.executeScript({
+      target:{tabId, allFrames:true},
+      func: CAPTCHA_CLICKER
+    }, function(results){
+      var clicked = results && results.some(function(r){ return r && r.result === 'clicked'; });
+      if(onDone) onDone(clicked);
+    });
+  }
+
   // === Start polling after login click ===
   function startPolling(tabId){
     var pollCount=0;
-    var maxPolls=60; // 90 seconds
+    var maxPolls=80;
     var captchaNotified=false;
+    var captchaClickTry=0;
 
     pollTimer=setInterval(function(){
       pollCount++;
@@ -194,19 +251,42 @@
         var pageType=results[0].result;
 
         if(pageType==='captcha'){
-          if(!captchaNotified){
-            captchaNotified=true;
-            setProgress("CAPTCHA solve করুন — তারপর auto 2FA হবে",60);
-            loginBtnText.innerHTML='⏳ CAPTCHA solve করার অপেক্ষায়...';
-            showToast("CAPTCHA দেখা যাচ্ছে। আপনি solve করুন, 2FA auto হবে!","#f59e0b");
+          // Auto-click CAPTCHA (প্রতি ৩ poll এ একবার try করব)
+          captchaClickTry++;
+          if(captchaClickTry % 3 === 1){
+            tryCaptchaAutoClick(tabId, function(clicked){
+              if(clicked){
+                setProgress("CAPTCHA auto-click করা হয়েছে! অপেক্ষা করুন...",65);
+                loginBtnText.innerHTML='⏳ CAPTCHA solve হচ্ছে...';
+                showToast("CAPTCHA auto-click করা হয়েছে! ✅","#f59e0b");
+              } else {
+                if(!captchaNotified){
+                  captchaNotified=true;
+                  setProgress("CAPTCHA আছে — auto-click চেষ্টা চলছে...",60);
+                  loginBtnText.innerHTML='⏳ CAPTCHA solve করার চেষ্টা...';
+                  showToast("CAPTCHA দেখা যাচ্ছে, auto-click চেষ্টা চলছে...","#f59e0b");
+                }
+              }
+            });
           }
         } else if(pageType==='2fa'){
           captchaNotified=false;
+
+          // 2FA key না থাকলে জানাবে
+          if(!secret){
+            stopPoll();
+            setProgress("2FA চাইছে কিন্তু key নেই!",75);
+            loginBtnText.innerHTML='⚠️ 2FA key দেওয়া হয়নি';
+            showToast("এই ID তে 2FA আছে কিন্তু key দেননি!","#e53e3e");
+            loading=false;
+            loginBtn.disabled=false;
+            return;
+          }
+
           setProgress("2FA code দেওয়া হচ্ছে...",80);
           loginBtnText.innerHTML='<div class="spinner"></div> 2FA: '+totpCode;
           showToast("2FA page! Code: "+totpCode,"#25D366");
           stopPoll();
-          // Refresh TOTP then inject
           generateTOTP(secret).then(function(newCode){
             totpCode=newCode;totpCodeEl.textContent=newCode;
             inject2FACode(tabId, newCode, function(res){
@@ -218,7 +298,6 @@
                 showToast("2FA কোড "+newCode+" দেওয়া হয়েছে! ✅","#25D366");
                 loading=false;done=true;
               } else {
-                // Retry polling for 2FA
                 startPolling(tabId);
               }
             });
@@ -265,9 +344,10 @@
     }, function(results){
       var res=results&&results[0]&&results[0].result;
       if(res==='filled'){
-        setProgress("Login হচ্ছে... CAPTCHA থাকলে solve করুন",50);
+        var msg = secret ? "Email ও Password দেওয়া হয়েছে ✅" : "Email ও Password দেওয়া হয়েছে (2FA নেই) ✅";
+        setProgress("Login হচ্ছে... CAPTCHA থাকলে auto-click হবে",50);
         loginBtnText.innerHTML='<div class="spinner"></div> Login হচ্ছে...';
-        showToast("Email ও Password দেওয়া হয়েছে ✅","#1877F2");
+        showToast(msg,"#1877F2");
         startPolling(tabId);
       } else {
         showToast("Login form পাওয়া যায়নি! Facebook page আছে?","#e53e3e");
@@ -279,11 +359,15 @@
   // === Main ===
   async function runLogin(){
     if(loading||done)return;
-    if(!uid||!pass||!secret){showToast("আগে তথ্য paste করুন","#e53e3e");return;}
+    // শুধু UID আর Pass থাকলেই চলবে, secret optional
+    if(!uid||!pass){showToast("আগে UID ও Password paste করুন","#e53e3e");return;}
     loading=true;loginBtn.disabled=true;successBox.style.display="none";
     stopPoll();
 
-    totpCode=await generateTOTP(secret);totpCodeEl.textContent=totpCode;
+    if(secret){
+      totpCode=await generateTOTP(secret);
+      totpCodeEl.textContent=totpCode;
+    }
     setProgress("Facebook tab খোঁজা হচ্ছে...",10);
     loginBtnText.innerHTML='<div class="spinner"></div> Tab খোঁজা হচ্ছে...';
 
@@ -295,15 +379,13 @@
         showToast("খোলা Facebook tab পাওয়া গেছে!","#1877F2");
 
         if(url.includes('checkpoint')||url.includes('approvals')){
-          // Already on checkpoint - start polling directly (may be CAPTCHA or 2FA)
-          setProgress("Checkpoint page... CAPTCHA solve করুন",55);
-          loginBtnText.innerHTML='⏳ CAPTCHA solve করার অপেক্ষায়...';
-          showToast("CAPTCHA দেখা যাচ্ছে। Solve করুন, 2FA auto হবে!","#f59e0b");
+          setProgress("Checkpoint page... auto-click চেষ্টা করছি",55);
+          loginBtnText.innerHTML='⏳ CAPTCHA solve করার চেষ্টা...';
+          showToast("CAPTCHA দেখা যাচ্ছে, auto-click চেষ্টা করছি!","#f59e0b");
           startPolling(loginTabId);
         } else if(url.includes('/login')||url.match(/facebook\.com\/?$/)){
           setTimeout(function(){injectLoginForm(loginTabId);},400);
         } else {
-          // Navigate to login
           chrome.tabs.update(loginTabId,{url:"https://www.facebook.com/login"},function(){
             setProgress("Login page এ যাচ্ছি...",15);
             chrome.tabs.onUpdated.addListener(function navL(id,info){
@@ -315,7 +397,6 @@
           });
         }
       } else {
-        // No Facebook tab open - use active tab
         chrome.tabs.query({active:true,currentWindow:true},function(active){
           if(!active||!active.length){loading=false;showToast("Tab পাওয়া যায়নি","#e53e3e");return;}
           loginTabId=active[0].id;
@@ -341,4 +422,3 @@
   });
   loginBtn.addEventListener("click",runLogin);
   setInterval(updateCountdown,1000);
-  
