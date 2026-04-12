@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 const WA_LINK = "https://wa.me/8801709281334?text=Assalamu%20Alaikum%2C%20Shourov%20FB%20AutoLogin%20extension%20ta%20diben%20please%20%F0%9F%99%8F";
 const FB_LINK = "https://www.facebook.com/profile.php?id=61588161951831";
 const PROFILE_PIC = "https://i.postimg.cc/tTbRxNQF/IMG-20260325-WA0011.jpg";
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const features = [
   {
@@ -53,48 +54,58 @@ const steps = [
   {
     num: "১",
     numEn: "1",
-    titleBn: "WhatsApp এ যোগাযোগ করুন",
-    titleEn: "Contact on WhatsApp",
-    descBn: "নিচের WhatsApp বাটনে ক্লিক করুন — Shourov ভাই extension ফাইল পাঠিয়ে দেবেন।",
-    descEn: "Click the WhatsApp button below — Shourov will send you the extension files.",
+    titleBn: "Extension ডাউনলোড করুন",
+    titleEn: "Download the Extension",
+    descBn: '"Extension ডাউনলোড করুন" বাটনে ক্লিক করুন — ZIP file আপনার device এ চলে আসবে।',
+    descEn: 'Click "Extension ডাউনলোড করুন" — the ZIP file will download to your device.',
   },
   {
     num: "২",
     numEn: "2",
-    titleBn: "Chrome Extensions খুলুন",
-    titleEn: "Open Chrome Extensions",
-    descBn: "Chrome এ address bar এ লিখুন: chrome://extensions",
-    descEn: "In Chrome, type in the address bar: chrome://extensions",
+    titleBn: "ZIP file Extract করুন",
+    titleEn: "Extract the ZIP File",
+    descBn: "ডাউনলোড হওয়া ZIP file যেকোনো একটি ফোল্ডারে extract করুন।",
+    descEn: "Extract the downloaded ZIP file into any folder on your device.",
   },
   {
     num: "৩",
     numEn: "3",
+    titleBn: "Chrome Extensions খুলুন",
+    titleEn: "Open Chrome Extensions",
+    descBn: "Chrome এ address bar এ লিখুন: chrome://extensions — তারপর Enter দিন।",
+    descEn: "In Chrome address bar, type: chrome://extensions — then press Enter.",
+  },
+  {
+    num: "৪",
+    numEn: "4",
     titleBn: "Developer Mode চালু করুন",
     titleEn: "Enable Developer Mode",
     descBn: "উপরে ডানদিকে Developer mode toggle চালু করুন।",
     descEn: "Toggle on Developer Mode at the top right corner.",
   },
   {
-    num: "৪",
-    numEn: "4",
-    titleBn: "Load Unpacked করুন",
-    titleEn: "Click Load Unpacked",
-    descBn: '"Load unpacked" বাটনে ক্লিক করে পাওয়া ফোল্ডারটি select করুন।',
-    descEn: 'Click "Load unpacked" and select the folder you received.',
-  },
-  {
     num: "৫",
     numEn: "5",
-    titleBn: "Extension চালু! ব্যবহার করুন",
-    titleEn: "Extension Added! Start Using",
-    descBn: 'Toolbar এ "Shourov FB" আইকন দেখা যাবে — ক্লিক করে ব্যবহার শুরু করুন।',
-    descEn: 'You\'ll see the "Shourov FB" icon in the toolbar — click to start.',
+    titleBn: "Load Unpacked দিয়ে Add করুন",
+    titleEn: "Load Unpacked & Done!",
+    descBn: '"Load unpacked" বাটনে ক্লিক করে extract করা ফোল্ডারটি select করুন — Extension চালু!',
+    descEn: 'Click "Load unpacked", select your extracted folder — Extension is ready!',
   },
 ];
 
 export default function App() {
   const [particles, setParticles] = useState<{x:number;y:number;s:number;d:number}[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+
+  function handleDownload() {
+    const a = document.createElement("a");
+    a.href = `${BASE}/api/extension/download`;
+    a.download = "Shourov-Fb-AutoLogin.zip";
+    a.click();
+    setDownloaded(true);
+    setShowModal(true);
+  }
 
   useEffect(() => {
     const ps = Array.from({length: 16}, () => ({
@@ -172,9 +183,9 @@ export default function App() {
           Log into Facebook instantly — 2FA, CAPTCHA all handled automatically
         </p>
 
-        {/* Add to Chrome button */}
+        {/* Download button */}
         <button
-          onClick={()=>setShowModal(true)}
+          onClick={handleDownload}
           className="add-btn"
           style={{
             display:"inline-flex",alignItems:"center",gap:12,
@@ -185,14 +196,17 @@ export default function App() {
             transition:"all .25s ease",position:"relative",overflow:"hidden",
           }}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+          {/* Download icon */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          Add to Chrome
+          Extension ডাউনলোড করুন
           <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent)",animation:"shine 2.5s infinite"}}/>
         </button>
         <div style={{marginTop:10,fontSize:12,color:"rgba(255,255,255,.3)"}}>
-          ✓ Free &nbsp;·&nbsp; ✓ Protected &nbsp;·&nbsp; ✓ বাংলায় তৈরি / Made in Bangla
+          Download Extension &nbsp;·&nbsp; ✓ Free &nbsp;·&nbsp; ✓ Protected
         </div>
       </section>
 
@@ -331,7 +345,7 @@ export default function App() {
         {/* Bottom CTA */}
         <div style={{textAlign:"center",marginTop:40}}>
           <button
-            onClick={()=>setShowModal(true)}
+            onClick={handleDownload}
             className="add-btn"
             style={{
               display:"inline-flex",alignItems:"center",gap:10,
@@ -342,10 +356,12 @@ export default function App() {
               transition:"all .25s ease",position:"relative",overflow:"hidden",
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Add to Chrome — কিভাবে?
+            Extension ডাউনলোড করুন / Download Extension
             <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent)",animation:"shine 2.5s infinite"}}/>
           </button>
         </div>
@@ -372,76 +388,80 @@ export default function App() {
             position:"fixed",inset:0,background:"rgba(0,0,0,.8)",zIndex:2000,
             display:"flex",alignItems:"center",justifyContent:"center",padding:20,
             backdropFilter:"blur(8px)",animation:"fadeIn .2s ease",
+            overflowY:"auto",
           }}
         >
           <div onClick={e=>e.stopPropagation()} style={{
             background:"linear-gradient(135deg,#0d1b3e,#0a1228)",
             border:"1px solid rgba(24,119,242,.4)",borderRadius:22,
-            padding:"28px 24px",maxWidth:460,width:"100%",
+            padding:"26px 22px",maxWidth:460,width:"100%",
             boxShadow:"0 24px 70px rgba(0,0,0,.7)",
           }}>
             {/* Header */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
               <div>
-                <div style={{fontSize:20,fontWeight:800,color:"#fff",marginBottom:4}}>
-                  কিভাবে Chrome এ Add করবেন?
+                <div style={{fontSize:19,fontWeight:800,color:"#25D366",marginBottom:2}}>
+                  ✅ ডাউনলোড শুরু হয়েছে!
                 </div>
-                <div style={{fontSize:12,color:"rgba(255,255,255,.35)"}}>How to Add to Chrome?</div>
+                <div style={{fontSize:11,color:"rgba(255,255,255,.35)"}}>Download started! Now follow the steps below.</div>
               </div>
               <button
                 onClick={()=>setShowModal(false)}
-                style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:8,width:32,height:32,color:"#fff",fontSize:16,cursor:"pointer",flexShrink:0}}
+                style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:8,width:32,height:32,color:"#fff",fontSize:16,cursor:"pointer",flexShrink:0,marginLeft:10}}
               >✕</button>
             </div>
 
-            {/* Important note */}
-            <div style={{background:"rgba(24,119,242,.1)",border:"1px solid rgba(24,119,242,.25)",borderRadius:12,padding:"12px 14px",marginBottom:18}}>
-              <div style={{fontSize:13,color:"#6ab0ff",fontWeight:600,marginBottom:4}}>
-                ⚠️ Chrome Extension সম্পর্কে জানুন
-              </div>
-              <div style={{fontSize:12,color:"rgba(255,255,255,.5)",lineHeight:1.7}}>
-                Chrome এ সরাসরি এক-ক্লিকে extension add করতে হলে Chrome Web Store লাগে। তাই নিচের ধাপ follow করুন।
-              </div>
-              <div style={{fontSize:11,color:"rgba(255,255,255,.3)",lineHeight:1.6,marginTop:4}}>
-                Direct one-click install requires the Chrome Web Store. Follow the steps below to add the extension manually.
-              </div>
+            {/* Install steps */}
+            <div style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,.5)",marginBottom:10,letterSpacing:.5}}>
+              CHROME এ ADD করতে / TO ADD TO CHROME:
             </div>
-
-            {/* Steps */}
-            <div style={{display:"flex",flexDirection:"column",gap:11,marginBottom:20}}>
-              {steps.map((s,i)=>(
-                <div key={i} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-                  <div style={{minWidth:30,height:30,borderRadius:8,background:"rgba(24,119,242,.2)",border:"1px solid rgba(24,119,242,.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#1877f2",flexShrink:0}}>
-                    {s.numEn}
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:20}}>
+              {[
+                {n:"১",nEn:"1",bn:"ZIP file Extract করুন",en:"Extract the downloaded ZIP file",sub:"ডাউনলোড হওয়া ZIP টি যেকোনো ফোল্ডারে extract করুন · Extract the ZIP to any folder"},
+                {n:"২",nEn:"2",bn:"Chrome এ chrome://extensions লিখুন",en:"Type chrome://extensions in Chrome",sub:"Address bar এ এটি লিখে Enter দিন · Type this in the address bar and press Enter"},
+                {n:"৩",nEn:"3",bn:"Developer Mode চালু করুন",en:"Enable Developer Mode",sub:"উপরে ডানদিকে Developer mode toggle চালু করুন · Toggle on Developer Mode (top right)"},
+                {n:"৪",nEn:"4",bn:"Load Unpacked ক্লিক করুন",en:"Click Load Unpacked",sub:'"Load unpacked" বাটনে ক্লিক করে extract করা ফোল্ডার select করুন · Click "Load unpacked" and select your folder'},
+                {n:"৫",nEn:"5",bn:"Done! Extension চালু হয়ে গেছে",en:"Done! Extension is ready",sub:'Toolbar এ "Shourov FB" আইকন দেখা যাবে · You\'ll see "Shourov FB" icon in the toolbar'},
+              ].map((s,i)=>(
+                <div key={i} style={{display:"flex",gap:11,alignItems:"flex-start"}}>
+                  <div style={{minWidth:28,height:28,borderRadius:7,background:"rgba(24,119,242,.2)",border:"1px solid rgba(24,119,242,.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#1877f2",flexShrink:0}}>
+                    {s.nEn}
                   </div>
                   <div>
-                    <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{s.titleBn}</div>
-                    <div style={{fontSize:11,color:"rgba(255,255,255,.38)",lineHeight:1.6}}>{s.descBn}</div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{s.bn}</div>
+                    <div style={{fontSize:10,color:"rgba(255,255,255,.35)",lineHeight:1.6,marginTop:2}}>{s.sub}</div>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* WhatsApp CTA */}
-            <a
-              href={WA_LINK}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display:"flex",alignItems:"center",justifyContent:"center",gap:8,
-                background:"linear-gradient(135deg,#25D366,#128C7E)",
-                borderRadius:12,padding:"13px",
-                color:"#fff",fontSize:15,fontWeight:700,textDecoration:"none",
-                boxShadow:"0 4px 20px rgba(37,211,102,.35)",
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-              WhatsApp এ extension ফাইল নিন / Get Files on WhatsApp
-            </a>
-            <div style={{textAlign:"center",marginTop:10,fontSize:11,color:"rgba(255,255,255,.25)"}}>
-              Shourov ভাই extension ফাইল পাঠিয়ে দেবেন · Shourov will send the files
+            {/* Re-download + close */}
+            <div style={{display:"flex",gap:10}}>
+              <button
+                onClick={handleDownload}
+                style={{
+                  flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
+                  background:"rgba(24,119,242,.15)",border:"1px solid rgba(24,119,242,.35)",
+                  borderRadius:10,padding:"11px",color:"#6ab0ff",fontSize:13,fontWeight:600,cursor:"pointer",
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                আবার ডাউনলোড / Re-download
+              </button>
+              <button
+                onClick={()=>setShowModal(false)}
+                style={{
+                  flex:1,background:"linear-gradient(135deg,#1877f2,#0d5fc7)",
+                  border:"none",borderRadius:10,padding:"11px",
+                  color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",
+                }}
+              >
+                বুঝেছি, ধন্যবাদ! / Got it!
+              </button>
             </div>
           </div>
         </div>
