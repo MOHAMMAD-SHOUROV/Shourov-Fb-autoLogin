@@ -12,3 +12,9 @@ id = "j0M9NDcJnz6U6IJJk67k-"
 uri = "file://attached_assets/Shourov-Fb-AutoLogin-Protected.zip"
 type = "unspecified"
 title = "Shourov-Fb-AutoLogin (Protected — Code Hidden)"
+
+[[outputs]]
+id = "oP3mpBlGN1ikf8PJJ6gA_"
+uri = "file://attached_assets/Shourov-Fb-AutoLogin-Locked.zip"
+type = "unspecified"
+title = "Shourov-Fb-AutoLogin (Password Locked)"
