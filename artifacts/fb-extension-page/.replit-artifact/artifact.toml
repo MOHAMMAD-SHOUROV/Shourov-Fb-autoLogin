@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Shourov FB AutoLogin — Extension Page"
+version = "1.0.0"
+id = "artifacts/fb-extension-page"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19512
+
+[services.development]
+run = "pnpm --filter @workspace/fb-extension-page run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/fb-extension-page", "run", "build" ]
+publicDir = "artifacts/fb-extension-page/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19512"
+BASE_PATH = "/"
