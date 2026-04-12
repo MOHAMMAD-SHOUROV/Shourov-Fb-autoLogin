@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 
 const WA_LINK = "https://wa.me/8801709281334?text=Assalamu%20Alaikum%2C%20Shourov%20FB%20AutoLogin%20extension%20ta%20diben%20please%20%F0%9F%99%8F";
 const FB_LINK = "https://www.facebook.com/profile.php?id=61588161951831";
+const PROFILE_PIC = "https://i.postimg.cc/tTbRxNQF/IMG-20260325-WA0011.jpg";
 
 const features = [
   {
@@ -93,6 +94,7 @@ const steps = [
 
 export default function App() {
   const [particles, setParticles] = useState<{x:number;y:number;s:number;d:number}[]>([]);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     const ps = Array.from({length: 16}, () => ({
@@ -171,16 +173,14 @@ export default function App() {
         </p>
 
         {/* Add to Chrome button */}
-        <a
-          href={WA_LINK}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          onClick={()=>setShowModal(true)}
           className="add-btn"
           style={{
             display:"inline-flex",alignItems:"center",gap:12,
             background:"linear-gradient(135deg,#1877f2,#0d5fc7)",
-            borderRadius:14,padding:"16px 36px",
-            color:"#fff",fontSize:18,fontWeight:700,textDecoration:"none",
+            border:"none",borderRadius:14,padding:"16px 36px",
+            color:"#fff",fontSize:18,fontWeight:700,cursor:"pointer",
             boxShadow:"0 6px 30px rgba(24,119,242,.45)",
             transition:"all .25s ease",position:"relative",overflow:"hidden",
           }}
@@ -190,7 +190,7 @@ export default function App() {
           </svg>
           Add to Chrome
           <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent)",animation:"shine 2.5s infinite"}}/>
-        </a>
+        </button>
         <div style={{marginTop:10,fontSize:12,color:"rgba(255,255,255,.3)"}}>
           ✓ Free &nbsp;·&nbsp; ✓ Protected &nbsp;·&nbsp; ✓ বাংলায় তৈরি / Made in Bangla
         </div>
@@ -206,7 +206,7 @@ export default function App() {
           {/* Profile Pic — Big */}
           <div style={{position:"relative",display:"inline-block",marginBottom:16}}>
             <img
-              src="https://graph.facebook.com/61588161951831/picture?type=large"
+              src={PROFILE_PIC}
               alt="Alihsan Shourov"
               style={{
                 width:110,height:110,borderRadius:"50%",objectFit:"cover",
@@ -214,13 +214,7 @@ export default function App() {
                 animation:"glow 3s ease-in-out infinite",
               }}
               onError={e=>{
-                const img = e.target as HTMLImageElement;
-                if (!img.dataset.fallback) {
-                  img.dataset.fallback = "1";
-                  img.src = "https://i.postimg.cc/JhXVqB55/IMG-8019.jpg";
-                } else {
-                  img.src = `https://ui-avatars.com/api/?name=Alihsan+Shourov&background=1877F2&color=fff&size=110`;
-                }
+                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=Alihsan+Shourov&background=1877F2&color=fff&size=110`;
               }}
             />
             {/* Online badge */}
@@ -336,32 +330,24 @@ export default function App() {
 
         {/* Bottom CTA */}
         <div style={{textAlign:"center",marginTop:40}}>
-          <a
-            href={WA_LINK}
-            target="_blank"
-            rel="noreferrer"
-            className="wa-btn"
+          <button
+            onClick={()=>setShowModal(true)}
+            className="add-btn"
             style={{
               display:"inline-flex",alignItems:"center",gap:10,
-              background:"linear-gradient(135deg,#25D366,#128C7E)",
-              borderRadius:13,padding:"15px 32px",
-              color:"#fff",fontSize:17,fontWeight:700,textDecoration:"none",
-              boxShadow:"0 6px 28px rgba(37,211,102,.4)",
+              background:"linear-gradient(135deg,#1877f2,#0d5fc7)",
+              border:"none",borderRadius:13,padding:"15px 32px",
+              color:"#fff",fontSize:17,fontWeight:700,cursor:"pointer",
+              boxShadow:"0 6px 28px rgba(24,119,242,.4)",
               transition:"all .25s ease",position:"relative",overflow:"hidden",
             }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
             </svg>
-            Extension নিতে WhatsApp করুন / Get Extension on WhatsApp
+            Add to Chrome — কিভাবে?
             <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent)",animation:"shine 2.5s infinite"}}/>
-          </a>
-          <div style={{marginTop:10,fontSize:12,color:"rgba(255,255,255,.28)"}}>
-            Click → WhatsApp খুলবে → Message পাঠান → Shourov ভাই extension পাঠিয়ে দেবেন
-          </div>
-          <div style={{marginTop:4,fontSize:11,color:"rgba(255,255,255,.18)"}}>
-            Click → WhatsApp opens → Send message → Shourov will send the extension files
-          </div>
+          </button>
         </div>
       </section>
 
@@ -377,6 +363,89 @@ export default function App() {
           <a href={WA_LINK} target="_blank" rel="noreferrer" style={{color:"#25D366",textDecoration:"none"}}>WhatsApp: 01709281334</a>
         </div>
       </footer>
+
+      {/* ─── INSTALL MODAL ─── */}
+      {showModal && (
+        <div
+          onClick={()=>setShowModal(false)}
+          style={{
+            position:"fixed",inset:0,background:"rgba(0,0,0,.8)",zIndex:2000,
+            display:"flex",alignItems:"center",justifyContent:"center",padding:20,
+            backdropFilter:"blur(8px)",animation:"fadeIn .2s ease",
+          }}
+        >
+          <div onClick={e=>e.stopPropagation()} style={{
+            background:"linear-gradient(135deg,#0d1b3e,#0a1228)",
+            border:"1px solid rgba(24,119,242,.4)",borderRadius:22,
+            padding:"28px 24px",maxWidth:460,width:"100%",
+            boxShadow:"0 24px 70px rgba(0,0,0,.7)",
+          }}>
+            {/* Header */}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+              <div>
+                <div style={{fontSize:20,fontWeight:800,color:"#fff",marginBottom:4}}>
+                  কিভাবে Chrome এ Add করবেন?
+                </div>
+                <div style={{fontSize:12,color:"rgba(255,255,255,.35)"}}>How to Add to Chrome?</div>
+              </div>
+              <button
+                onClick={()=>setShowModal(false)}
+                style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:8,width:32,height:32,color:"#fff",fontSize:16,cursor:"pointer",flexShrink:0}}
+              >✕</button>
+            </div>
+
+            {/* Important note */}
+            <div style={{background:"rgba(24,119,242,.1)",border:"1px solid rgba(24,119,242,.25)",borderRadius:12,padding:"12px 14px",marginBottom:18}}>
+              <div style={{fontSize:13,color:"#6ab0ff",fontWeight:600,marginBottom:4}}>
+                ⚠️ Chrome Extension সম্পর্কে জানুন
+              </div>
+              <div style={{fontSize:12,color:"rgba(255,255,255,.5)",lineHeight:1.7}}>
+                Chrome এ সরাসরি এক-ক্লিকে extension add করতে হলে Chrome Web Store লাগে। তাই নিচের ধাপ follow করুন।
+              </div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,.3)",lineHeight:1.6,marginTop:4}}>
+                Direct one-click install requires the Chrome Web Store. Follow the steps below to add the extension manually.
+              </div>
+            </div>
+
+            {/* Steps */}
+            <div style={{display:"flex",flexDirection:"column",gap:11,marginBottom:20}}>
+              {steps.map((s,i)=>(
+                <div key={i} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                  <div style={{minWidth:30,height:30,borderRadius:8,background:"rgba(24,119,242,.2)",border:"1px solid rgba(24,119,242,.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#1877f2",flexShrink:0}}>
+                    {s.numEn}
+                  </div>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#fff"}}>{s.titleBn}</div>
+                    <div style={{fontSize:11,color:"rgba(255,255,255,.38)",lineHeight:1.6}}>{s.descBn}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* WhatsApp CTA */}
+            <a
+              href={WA_LINK}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                background:"linear-gradient(135deg,#25D366,#128C7E)",
+                borderRadius:12,padding:"13px",
+                color:"#fff",fontSize:15,fontWeight:700,textDecoration:"none",
+                boxShadow:"0 4px 20px rgba(37,211,102,.35)",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+              WhatsApp এ extension ফাইল নিন / Get Files on WhatsApp
+            </a>
+            <div style={{textAlign:"center",marginTop:10,fontSize:11,color:"rgba(255,255,255,.25)"}}>
+              Shourov ভাই extension ফাইল পাঠিয়ে দেবেন · Shourov will send the files
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
