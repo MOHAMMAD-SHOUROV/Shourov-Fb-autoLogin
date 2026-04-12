@@ -1,6 +1,8 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
+import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -30,5 +32,16 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Production: React app static files serve করবে
+if (process.env.NODE_ENV === "production") {
+  const staticDir = path.join(process.cwd(), "artifacts", "fb-extension-page", "dist", "public");
+  if (fs.existsSync(staticDir)) {
+    app.use(express.static(staticDir));
+    app.get(/^(?!\/api).*/, (_req, res) => {
+      res.sendFile(path.join(staticDir, "index.html"));
+    });
+  }
+}
 
 export default app;

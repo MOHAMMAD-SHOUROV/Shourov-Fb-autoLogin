@@ -1,12 +1,10 @@
 import { Router } from "express";
 import path from "path";
-import { fileURLToPath } from "url";
 import fs from "fs";
 
 const router = Router();
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const EXT_FILE = path.resolve(__dirname, "../../../../../attached_assets/Shourov-Fb-AutoLogin-Protected.zip");
+const EXT_FILE = path.join(process.cwd(), "attached_assets", "Shourov-Fb-AutoLogin-Protected.zip");
 
 router.get("/extension/download", (req, res) => {
   if (!fs.existsSync(EXT_FILE)) {
