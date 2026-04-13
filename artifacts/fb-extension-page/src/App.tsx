@@ -86,6 +86,15 @@ export default function App() {
     setShowModal(true);
   }
 
+  function handleDownloadCrx() {
+    const a = document.createElement("a");
+    a.href = `${BASE}/api/extension/download-crx`;
+    a.download = "Shourov-Fb-AutoLogin.crx";
+    a.click();
+    setDownloaded(true);
+    setShowModal(true);
+  }
+
   useEffect(() => {
     const ps = Array.from({length: 16}, () => ({
       x: Math.random() * 100,
@@ -156,30 +165,56 @@ export default function App() {
           Log into Facebook instantly — 2FA, CAPTCHA all handled automatically
         </p>
 
-        {/* Download button */}
-        <button
-          onClick={handleDownload}
-          className="add-btn"
-          style={{
-            display:"inline-flex",alignItems:"center",gap:12,
-            background:"linear-gradient(135deg,#1877f2,#0d5fc7)",
-            border:"none",borderRadius:14,padding:"16px 36px",
-            color:"#fff",fontSize:18,fontWeight:700,cursor:"pointer",
-            boxShadow:"0 6px 30px rgba(24,119,242,.45)",
-            transition:"all .25s ease",position:"relative",overflow:"hidden",
-          }}
-        >
-          {/* Download icon */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Extension ডাউনলোড করুন
-          <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent)",animation:"shine 2.5s infinite"}}/>
-        </button>
-        <div style={{marginTop:10,fontSize:12,color:"rgba(255,255,255,.3)"}}>
-          Download Extension &nbsp;·&nbsp; ✓ Free &nbsp;·&nbsp; ✓ Protected
+        {/* Download buttons */}
+        <div style={{display:"flex",flexWrap:"wrap",gap:12,justifyContent:"center",alignItems:"center"}}>
+          {/* PC / Laptop — ZIP */}
+          <div style={{textAlign:"center"}}>
+            <button
+              onClick={handleDownload}
+              className="add-btn"
+              style={{
+                display:"inline-flex",alignItems:"center",gap:10,
+                background:"linear-gradient(135deg,#1877f2,#0d5fc7)",
+                border:"none",borderRadius:14,padding:"15px 30px",
+                color:"#fff",fontSize:16,fontWeight:700,cursor:"pointer",
+                boxShadow:"0 6px 30px rgba(24,119,242,.45)",
+                transition:"all .25s ease",position:"relative",overflow:"hidden",
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              💻 Laptop / PC
+              <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent)",animation:"shine 2.5s infinite"}}/>
+            </button>
+            <div style={{marginTop:5,fontSize:11,color:"rgba(255,255,255,.3)"}}>ZIP file · Load Unpacked</div>
+          </div>
+
+          {/* Mobile / Phone — CRX */}
+          <div style={{textAlign:"center"}}>
+            <button
+              onClick={handleDownloadCrx}
+              className="add-btn"
+              style={{
+                display:"inline-flex",alignItems:"center",gap:10,
+                background:"linear-gradient(135deg,#25D366,#128C7E)",
+                border:"none",borderRadius:14,padding:"15px 30px",
+                color:"#fff",fontSize:16,fontWeight:700,cursor:"pointer",
+                boxShadow:"0 6px 30px rgba(37,211,102,.4)",
+                transition:"all .25s ease",position:"relative",overflow:"hidden",
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                <line x1="12" y1="18" x2="12.01" y2="18"/>
+              </svg>
+              📱 Mobile / Phone
+              <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent)",animation:"shine 2.5s infinite"}}/>
+            </button>
+            <div style={{marginTop:5,fontSize:11,color:"rgba(255,255,255,.3)"}}>CRX file · Kiwi Browser</div>
+          </div>
         </div>
       </section>
 
@@ -313,27 +348,23 @@ export default function App() {
         </div>
 
         {/* Bottom CTA */}
-        <div style={{textAlign:"center",marginTop:40}}>
-          <button
-            onClick={handleDownload}
-            className="add-btn"
-            style={{
-              display:"inline-flex",alignItems:"center",gap:10,
-              background:"linear-gradient(135deg,#1877f2,#0d5fc7)",
-              border:"none",borderRadius:13,padding:"15px 32px",
-              color:"#fff",fontSize:17,fontWeight:700,cursor:"pointer",
-              boxShadow:"0 6px 28px rgba(24,119,242,.4)",
-              transition:"all .25s ease",position:"relative",overflow:"hidden",
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Extension ডাউনলোড করুন / Download Extension
-            <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent)",animation:"shine 2.5s infinite"}}/>
-          </button>
+        <div style={{display:"flex",flexWrap:"wrap",gap:12,justifyContent:"center",marginTop:40}}>
+          <div style={{textAlign:"center"}}>
+            <button onClick={handleDownload} className="add-btn" style={{display:"inline-flex",alignItems:"center",gap:9,background:"linear-gradient(135deg,#1877f2,#0d5fc7)",border:"none",borderRadius:13,padding:"14px 28px",color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",boxShadow:"0 6px 28px rgba(24,119,242,.4)",transition:"all .25s ease",position:"relative",overflow:"hidden"}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              💻 Laptop / PC Download
+              <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent)",animation:"shine 2.5s infinite"}}/>
+            </button>
+            <div style={{marginTop:5,fontSize:11,color:"rgba(255,255,255,.3)"}}>ZIP · Load Unpacked</div>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <button onClick={handleDownloadCrx} className="add-btn" style={{display:"inline-flex",alignItems:"center",gap:9,background:"linear-gradient(135deg,#25D366,#128C7E)",border:"none",borderRadius:13,padding:"14px 28px",color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",boxShadow:"0 6px 28px rgba(37,211,102,.35)",transition:"all .25s ease",position:"relative",overflow:"hidden"}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+              📱 Mobile / Phone Download
+              <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent)",animation:"shine 2.5s infinite"}}/>
+            </button>
+            <div style={{marginTop:5,fontSize:11,color:"rgba(255,255,255,.3)"}}>CRX · Kiwi Browser</div>
+          </div>
         </div>
       </section>
 
