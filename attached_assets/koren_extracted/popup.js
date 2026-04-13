@@ -96,12 +96,35 @@
   }
 
   // ── Parse input line ──────────────────────────────────────
+  // Handles any separator: single tab, multiple tabs, multiple spaces, or mixed.
+  // The 2FA secret can have internal spaces (e.g. "YPC3 P4AU KVNM") — they are stripped.
   function parseLine(line) {
-    var parts = line.split("\t");
-    if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) {
-      uid    = parts[0].replace(/\s/g, "");
-      pass   = parts[1].replace(/\s/g, "");
-      secret = parts.length >= 3 ? parts.slice(2).join(" ").replace(/\s/g, "") : "";
+    var trimmed = line.trim();
+    if (!trimmed) return false;
+
+    var parts;
+
+    // Pass 1: split by one or more tabs (most common from spreadsheet paste)
+    if (trimmed.indexOf('\t') !== -1) {
+      parts = trimmed.split(/\t+/).map(function (p) { return p.trim(); }).filter(Boolean);
+    }
+
+    // Pass 2: if tabs gave < 2 fields, try two or more consecutive spaces as separator
+    if (!parts || parts.length < 2) {
+      parts = trimmed.split(/[ \t]{2,}/).map(function (p) { return p.trim(); }).filter(Boolean);
+    }
+
+    // Pass 3: fallback — any whitespace run of 2+
+    if (!parts || parts.length < 2) {
+      parts = trimmed.split(/\s{2,}/).map(function (p) { return p.trim(); }).filter(Boolean);
+    }
+
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      uid  = parts[0].replace(/\s/g, "");          // UID — no spaces
+      pass = parts[1].trim();                       // Password — keep as typed
+      // 2FA secret: everything after the 2nd field, all spaces removed (base32 formatting)
+      secret = parts.length >= 3 ? parts.slice(2).join("").replace(/\s/g, "") : "";
+
       parsedRow.style.display = "grid";
       pUid.textContent    = uid || "—";
       pPass.textContent   = pass ? "••••••" : "—";
@@ -110,6 +133,7 @@
       loginBtn.disabled = false;
       return true;
     }
+
     parsedRow.style.display = "none";
     totpBox.style.display   = "none";
     loginBtn.disabled = true;
