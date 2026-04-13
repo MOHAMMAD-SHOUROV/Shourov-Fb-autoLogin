@@ -1,4 +1,5 @@
 (function () {
+
   // ── BD Clock ──────────────────────────────────────────────
   function tick() {
     var el = document.getElementById('bdClock');
@@ -90,8 +91,6 @@
     progressFill.style.width = pct + "%";
   }
 
-  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-
   function stopPoll() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   }
@@ -135,17 +134,54 @@
     }
   }
 
-  // ── Polling after login attempt ───────────────────────────
+  // ── Detect page type (2FA check FIRST before URL checkpoint check) ──
   function detectPageType(tabId, cb) {
     chrome.scripting.executeScript({
       target: { tabId: tabId },
       func: function () {
         var url = location.href;
-        if (url.includes('checkpoint') || url.includes('approvals')) return 'checkpoint';
-        if (document.querySelector('input[name="approvals_code"]') ||
-            document.querySelector('input[name="mfa_code"]')) return 'twofa';
-        if (url.includes('facebook.com') && !url.includes('/login') &&
-            !url.includes('checkpoint')) return 'success';
+
+        // ① 2FA input field present? → highest priority, check BEFORE URL checks
+        var tfaSelectors = [
+          'input[name="approvals_code"]',
+          'input[name="mfa_code"]',
+          'input[name="code"]',
+          'input[id*="approvals"]',
+          'input[id*="mfa"]',
+          'input[autocomplete="one-time-code"]',
+          'input[placeholder*="code" i]',
+          'input[placeholder*="কোড"]',
+          'input[aria-label*="code" i]',
+          'input[aria-label*="authentication" i]',
+        ];
+        for (var i = 0; i < tfaSelectors.length; i++) {
+          var el = document.querySelector(tfaSelectors[i]);
+          if (el && el.type !== 'hidden' && el.offsetParent !== null) return 'twofa';
+        }
+        // Also detect numeric-only visible single input on checkpoint pages as 2FA
+        if ((url.includes('checkpoint') || url.includes('two_step') || url.includes('login/two')) &&
+            !url.includes('save-device') && !url.includes('remember')) {
+          var inputs = document.querySelectorAll('input[type="tel"], input[type="number"], input[type="text"]');
+          for (var j = 0; j < inputs.length; j++) {
+            var inp = inputs[j];
+            if (inp.offsetParent !== null && !inp.name.match(/email|pass|user/i)) return 'twofa';
+          }
+        }
+
+        // ② Checkpoint / CAPTCHA page
+        if (url.includes('checkpoint') || url.includes('approvals') ||
+            url.includes('captcha') || url.includes('integrity')) {
+          return 'checkpoint';
+        }
+
+        // ③ Successfully logged in (not on login/checkpoint page, on facebook.com)
+        if (url.match(/facebook\.com/) && !url.includes('/login') && !url.includes('checkpoint')) {
+          // Additional checks: logged-in users have specific elements
+          var hasLoginBtn = document.querySelector('input[name="login"]') ||
+                            document.querySelector('[data-testid="royal_login_button"]');
+          if (!hasLoginBtn) return 'success';
+        }
+
         return 'unknown';
       }
     }, function (results) {
@@ -154,19 +190,42 @@
     });
   }
 
+  // ── Auto-click CAPTCHA / checkpoint buttons ───────────────
   function injectCheckpointClick(tabId, cb) {
     chrome.scripting.executeScript({
       target: { tabId: tabId },
       func: function () {
-        var btns = Array.from(document.querySelectorAll('button,input[type="submit"],a'));
+        // Keywords for "continue/approve/confirm" buttons (EN + Bengali)
+        var keywords = [
+          'continue', 'ok', 'confirm', 'approve', 'this was me', 'এটা আমি',
+          'আমি ছিলাম', 'continue as', 'yes, it was me', 'সঠিক', 'পরবর্তী',
+          'next', 'submit', 'i approve', 'secure account', 'skip', 'done',
+          'got it', 'বুঝেছি', 'not now', 'এখন না',
+        ];
+
+        // Try buttons first
+        var allBtns = Array.from(document.querySelectorAll('button, input[type="submit"], a[role="button"], [role="button"]'));
         var clicked = false;
-        var keywords = ['continue','ok','confirm','approve','this was me','আমি ছিলাম'];
-        for (var b of btns) {
-          var txt = (b.textContent || b.value || '').toLowerCase();
+
+        for (var i = 0; i < allBtns.length; i++) {
+          var el = allBtns[i];
+          if (el.offsetParent === null) continue; // skip hidden
+          var txt = (el.textContent || el.value || el.getAttribute('aria-label') || '').toLowerCase().trim();
           if (keywords.some(function (k) { return txt.includes(k); })) {
-            b.click(); clicked = true; break;
+            el.click();
+            clicked = true;
+            break;
           }
         }
+
+        // If no button matched, try clicking the primary/submit button
+        if (!clicked) {
+          var primary = document.querySelector('[data-testid="royal_login_button"]') ||
+                        document.querySelector('button[type="submit"]') ||
+                        document.querySelector('input[type="submit"]');
+          if (primary && primary.offsetParent !== null) { primary.click(); clicked = true; }
+        }
+
         return clicked;
       }
     }, function (results) {
@@ -174,67 +233,154 @@
     });
   }
 
+  // ── Inject 2FA code into the page ────────────────────────
   function inject2FA(tabId, code, cb) {
     chrome.scripting.executeScript({
       target: { tabId: tabId },
       func: function (c) {
         function setVal(el, val) {
+          // React/SPA-compatible value setter
           try {
-            var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-            if (d && d.set) d.set.call(el, val);
+            var nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+            if (nativeInputValueSetter && nativeInputValueSetter.set) {
+              nativeInputValueSetter.set.call(el, val);
+            } else {
+              el.value = val;
+            }
           } catch (e) { el.value = val; }
-          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('input',  { bubbles: true }));
           el.dispatchEvent(new Event('change', { bubbles: true }));
+          el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
         }
-        var inp = document.querySelector('input[name="approvals_code"]') ||
-                  document.querySelector('input[name="mfa_code"]') ||
-                  document.querySelector('input[type="tel"]') ||
-                  document.querySelector('input[autocomplete="one-time-code"]');
-        if (!inp) return false;
-        inp.focus(); setVal(inp, c);
+
+        // Try every possible 2FA input selector
+        var selectors = [
+          'input[name="approvals_code"]',
+          'input[name="mfa_code"]',
+          'input[name="code"]',
+          'input[id*="approvals"]',
+          'input[id*="mfa"]',
+          'input[autocomplete="one-time-code"]',
+          'input[placeholder*="code" i]',
+          'input[placeholder*="কোড"]',
+          'input[aria-label*="code" i]',
+          'input[type="tel"]',
+          'input[type="number"]',
+        ];
+
+        var inp = null;
+        for (var i = 0; i < selectors.length; i++) {
+          var el = document.querySelector(selectors[i]);
+          if (el && el.type !== 'hidden' && el.offsetParent !== null) { inp = el; break; }
+        }
+
+        // Last resort: find any visible text/tel input that looks like a code field
+        if (!inp) {
+          var all = document.querySelectorAll('input[type="text"], input[type="tel"], input[type="number"], input:not([type])');
+          for (var j = 0; j < all.length; j++) {
+            var candidate = all[j];
+            if (candidate.offsetParent !== null && !candidate.name.match(/email|pass|user|search/i)) {
+              inp = candidate; break;
+            }
+          }
+        }
+
+        if (!inp) return 'input_not_found';
+
+        inp.focus();
+        inp.value = '';
+        setVal(inp, c);
+
+        // Submit after short delay
         setTimeout(function () {
-          var btn = document.querySelector('button[type="submit"]') ||
-                    document.querySelector('input[type="submit"]');
-          if (btn) btn.click();
-        }, 300);
-        return true;
+          var btn = document.querySelector('[data-testid="two_factor_auth_confirm_button"]') ||
+                    document.querySelector('button[type="submit"]') ||
+                    document.querySelector('input[type="submit"]') ||
+                    document.querySelector('[role="button"][tabindex="0"]');
+          if (btn && btn.offsetParent !== null) btn.click();
+        }, 500);
+
+        return 'injected';
       },
       args: [code]
     }, function (results) {
-      cb(results && results[0] && results[0].result);
+      var r = results && results[0] && results[0].result;
+      cb(r === 'injected');
     });
   }
 
+  // ── Polling loop after login ──────────────────────────────
+  var pollAttempts = 0;
+  var twoFaInjected = false;
+
   function startPolling(tabId) {
     stopPoll();
-    var attempts = 0;
+    pollAttempts = 0;
+    twoFaInjected = false;
+
     pollTimer = setInterval(function () {
-      attempts++;
-      if (attempts > 20) { stopPoll(); loading = false; showToast("Timeout — দেরি হচ্ছে", "#e53e3e"); return; }
+      pollAttempts++;
+
+      if (pollAttempts > 30) {
+        stopPoll();
+        loading = false;
+        showToast("Timeout — দেরি হচ্ছে, আবার চেষ্টা করুন", "#e53e3e");
+        loginBtnText.textContent = "Auto Login করুন";
+        return;
+      }
+
       detectPageType(tabId, function (type) {
-        if (type === 'checkpoint') {
-          setProgress("CAPTCHA / Checkpoint auto-click চেষ্টা...", 60);
-          injectCheckpointClick(tabId, function (clicked) {
-            if (clicked) showToast("Checkpoint button ক্লিক করা হয়েছে!", "#f59e0b");
-          });
-        } else if (type === 'twofa') {
-          stopPoll();
+        if (type === 'twofa') {
+          if (twoFaInjected) return; // already injected, wait for result
+          if (!secret) {
+            // No 2FA secret provided — notify user
+            stopPoll();
+            loading = false;
+            setProgress("2FA দরকার! Secret দিন", 70);
+            showToast("2FA কোড চাওয়া হচ্ছে — UID[Tab]Pass[Tab]2FA_Secret দিয়ে আবার দিন", "#f59e0b");
+            loginBtnText.textContent = "Auto Login করুন";
+            return;
+          }
+          twoFaInjected = true;
           setProgress("2FA কোড দেওয়া হচ্ছে...", 80);
           loginBtnText.innerHTML = '⏳ 2FA দেওয়া হচ্ছে...';
           generateTOTP(secret).then(function (newCode) {
             inject2FA(tabId, newCode, function (ok) {
               if (ok) {
-                setProgress("2FA দেওয়া হয়েছে! ✅", 95);
+                setProgress("2FA দেওয়া হয়েছে ✅", 90);
                 loginBtnText.innerHTML = '✅ 2FA সম্পন্ন!';
                 usedCodeEl.textContent = "2FA: " + newCode;
                 successBox.style.display = "block";
-                showToast("2FA কোড " + newCode + " দেওয়া হয়েছে! ✅", "#25D366");
-                loading = false; done = true;
+                showToast("2FA কোড " + newCode + " দেওয়া হয়েছে ✅", "#25D366");
+                // Keep polling to detect final success
+                twoFaInjected = false; // allow re-inject if needed
+                setTimeout(function () {
+                  detectPageType(tabId, function (t2) {
+                    if (t2 === 'success') {
+                      stopPoll();
+                      setProgress("লগইন সম্পন্ন! ✅", 100);
+                      loginBtnText.innerHTML = '✅ লগইন সম্পন্ন!';
+                      showToast("লগইন সফল! ✅", "#25D366");
+                      loading = false; done = true;
+                    } else {
+                      twoFaInjected = false;
+                    }
+                  });
+                }, 2500);
               } else {
-                startPolling(tabId);
+                // Input not found, retry
+                twoFaInjected = false;
               }
             });
           });
+
+        } else if (type === 'checkpoint') {
+          setProgress("Checkpoint / CAPTCHA — auto-click চেষ্টা...", 60);
+          loginBtnText.innerHTML = '⏳ CAPTCHA সমাধান করছি...';
+          injectCheckpointClick(tabId, function (clicked) {
+            if (clicked) showToast("Checkpoint button ক্লিক! ⏳", "#f59e0b");
+          });
+
         } else if (type === 'success') {
           stopPoll();
           setProgress("লগইন সম্পন্ন! ✅", 100);
@@ -244,11 +390,12 @@
           showToast("লগইন সফল! ✅", "#25D366");
           loading = false; done = true;
         }
+        // 'unknown' — keep waiting
       });
-    }, 1500);
+    }, 1800);
   }
 
-  // ── Inject login form ─────────────────────────────────────
+  // ── Fill login form and submit ────────────────────────────
   function injectLoginForm(tabId) {
     chrome.scripting.executeScript({
       target: { tabId: tabId },
@@ -257,13 +404,17 @@
           try {
             var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
             if (d && d.set) d.set.call(el, val);
+            else el.value = val;
           } catch (e) { el.value = val; }
-          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('input',  { bubbles: true }));
           el.dispatchEvent(new Event('change', { bubbles: true }));
+          el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
         }
+
         var emailEl = document.querySelector('input[name="email"]') || document.getElementById('email');
         var passEl  = document.querySelector('input[name="pass"]')  || document.getElementById('pass');
         if (!emailEl || !passEl) return 'not_found';
+
         emailEl.focus(); setVal(emailEl, email);
         setTimeout(function () {
           passEl.focus(); setVal(passEl, pw);
@@ -274,7 +425,7 @@
                       document.querySelector('input[type="submit"]');
             if (btn) btn.click();
           }, 400);
-        }, 150);
+        }, 200);
         return 'filled';
       },
       args: [uid, pass]
@@ -282,12 +433,14 @@
       var res = results && results[0] && results[0].result;
       if (res === 'not_found') {
         showToast("Login form পাওয়া যায়নি!", "#e53e3e");
-        loading = false; return;
+        loading = false;
+        loginBtnText.textContent = "Auto Login করুন";
+        return;
       }
-      setProgress("Login form fill হয়েছে! ✅", 40);
+      setProgress("Login form fill হয়েছে ✅", 40);
       loginBtnText.innerHTML = '⏳ লগইন হচ্ছে...';
-      showToast("Email & Password fill করা হয়েছে!", "#1877F2");
-      setTimeout(function () { startPolling(tabId); }, 2000);
+      showToast("Email & Password দেওয়া হয়েছে ✅", "#1877F2");
+      setTimeout(function () { startPolling(tabId); }, 2500);
     });
   }
 
@@ -303,33 +456,44 @@
     loading = true;
     stopPoll();
     setProgress("শুরু হচ্ছে...", 5);
-    loginBtnText.innerHTML = '<div class="spinner"></div> Tab খোঁজা হচ্ছে...';
+    loginBtnText.innerHTML = '⏳ Tab খোঁজা হচ্ছে...';
 
-    chrome.tabs.query({ url: "https://www.facebook.com/*" }, function (fbTabs) {
+    chrome.tabs.query({ url: ["https://www.facebook.com/*", "https://m.facebook.com/*"] }, function (fbTabs) {
       if (fbTabs && fbTabs.length > 0) {
         loginTabId = fbTabs[0].id;
         chrome.tabs.update(loginTabId, { active: true });
         var url = fbTabs[0].url || '';
         showToast("খোলা Facebook tab পাওয়া গেছে!", "#1877F2");
-        if (url.includes('checkpoint') || url.includes('approvals')) {
-          setProgress("Checkpoint page... auto-click চেষ্টা করছি", 55);
-          loginBtnText.innerHTML = '⏳ CAPTCHA solve করার চেষ্টা...';
-          showToast("CAPTCHA দেখা যাচ্ছে, auto-click চেষ্টা করছি!", "#f59e0b");
-          startPolling(loginTabId);
-        } else if (url.includes('/login') || url.match(/facebook\.com\/?$/)) {
+
+        if (url.includes('checkpoint') || url.includes('approvals') || url.includes('captcha')) {
+          // Check if 2FA first
+          detectPageType(loginTabId, function (type) {
+            if (type === 'twofa') {
+              setProgress("2FA page পাওয়া গেছে", 75);
+              startPolling(loginTabId);
+            } else {
+              setProgress("Checkpoint page — auto-click চেষ্টা...", 55);
+              loginBtnText.innerHTML = '⏳ CAPTCHA সমাধান করছি...';
+              showToast("CAPTCHA দেখা যাচ্ছে, auto-click করছি!", "#f59e0b");
+              startPolling(loginTabId);
+            }
+          });
+        } else if (url.includes('/login') || url.match(/facebook\.com\/?$/) || url === 'https://www.facebook.com/') {
           setTimeout(function () { injectLoginForm(loginTabId); }, 400);
         } else {
+          // Navigate to login page first
           chrome.tabs.update(loginTabId, { url: "https://www.facebook.com/login" }, function () {
             setProgress("Login page এ যাচ্ছি...", 15);
             chrome.tabs.onUpdated.addListener(function navL(id, info) {
               if (id === loginTabId && info.status === 'complete') {
                 chrome.tabs.onUpdated.removeListener(navL);
-                setTimeout(function () { injectLoginForm(loginTabId); }, 500);
+                setTimeout(function () { injectLoginForm(loginTabId); }, 600);
               }
             });
           });
         }
       } else {
+        // No Facebook tab open — open one
         chrome.tabs.query({ active: true, currentWindow: true }, function (active) {
           if (!active || !active.length) {
             loading = false; showToast("Tab পাওয়া যায়নি", "#e53e3e"); return;
@@ -340,7 +504,7 @@
             chrome.tabs.onUpdated.addListener(function navL(id, info) {
               if (id === loginTabId && info.status === 'complete') {
                 chrome.tabs.onUpdated.removeListener(navL);
-                setTimeout(function () { injectLoginForm(loginTabId); }, 500);
+                setTimeout(function () { injectLoginForm(loginTabId); }, 600);
               }
             });
           });
@@ -357,10 +521,11 @@
     progressWrap.style.display = "none";
     stopPoll(); clearTimeout(autoTimer);
     if (parseLine(comboInput.value.trim())) {
-      autoTimer = setTimeout(function () { runLogin(); }, 300);
+      autoTimer = setTimeout(function () { runLogin(); }, 350);
     }
   });
 
   loginBtn.addEventListener("click", runLogin);
   setInterval(updateCountdown, 1000);
+
 })();
