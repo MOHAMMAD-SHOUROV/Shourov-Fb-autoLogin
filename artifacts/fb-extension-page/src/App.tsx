@@ -27,27 +27,6 @@ const features = [
     descBn: "CAPTCHA আসলে auto-click করে — ম্যানুয়াল ঝামেলা নেই।",
     descEn: "Auto-clicks CAPTCHA when it appears — fully automatic.",
   },
-  {
-    icon: "🕐",
-    titleBn: "BD সময় ঘড়ি",
-    titleEn: "BD Time Clock",
-    descBn: "Live বাংলাদেশ সময় দেখায় extension এর মধ্যে।",
-    descEn: "Shows live Bangladesh time inside the extension.",
-  },
-  {
-    icon: "🛡️",
-    titleBn: "Protected Code",
-    titleEn: "Protected Code",
-    descBn: "Extension এর কোড সম্পূর্ণ obfuscate — কেউ চুরি করতে পারবে না।",
-    descEn: "Fully obfuscated code — no one can steal or copy it.",
-  },
-  {
-    icon: "🇧🇩",
-    titleBn: "বাংলায় তৈরি",
-    titleEn: "Made in Bangla",
-    descBn: "সম্পূর্ণ বাংলায় interface — সহজে বোঝা যায়।",
-    descEn: "Full Bengali interface — easy to understand and use.",
-  },
 ];
 
 const steps = [
@@ -122,7 +101,7 @@ export default function App() {
 
       {/* SEO hidden */}
       <span style={{position:"absolute",width:1,height:1,overflow:"hidden",opacity:0,pointerEvents:"none"}}>
-        নুসাইবা আইটি সেন্টার২৪৭৮ Nusaiba IT Center 2478 Shourov FB AutoLogin Facebook Auto Login Chrome Extension Alihsan Shourov
+        Shourov FB AutoLogin Facebook Auto Login Chrome Extension Alihsan Shourov
       </span>
 
       {/* Particles */}
@@ -160,12 +139,6 @@ export default function App() {
           <svg width="42" height="42" viewBox="0 0 24 24" fill="white">
             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
           </svg>
-        </div>
-
-        {/* Brand */}
-        <div style={{marginBottom:6}}>
-          <div style={{fontSize:"clamp(1rem,2.2vw,1.2rem)",fontWeight:800,color:"#6ab0ff",letterSpacing:1}}>নুসাইবা আইটি সেন্টার২৪৭৮</div>
-          <div style={{fontSize:"clamp(0.7rem,1.4vw,0.8rem)",color:"rgba(255,255,255,.3)",letterSpacing:3,marginTop:2}}>NUSAIBA IT CENTER 2478</div>
         </div>
 
         <div style={{display:"inline-block",background:"rgba(24,119,242,.15)",border:"1px solid rgba(24,119,242,.3)",borderRadius:"100px",padding:"4px 16px",fontSize:12,color:"#6ab0ff",margin:"12px 0 16px",letterSpacing:1}}>
@@ -235,10 +208,7 @@ export default function App() {
             <div style={{position:"absolute",bottom:6,right:6,width:18,height:18,borderRadius:"50%",background:"#25D366",border:"2.5px solid #07101f"}}/>
           </div>
 
-          <div style={{fontSize:20,fontWeight:800,color:"#fff",marginBottom:2}}>Alihsan Shourov</div>
-          <div style={{fontSize:13,color:"rgba(255,255,255,.4)",marginBottom:20}}>
-            Developer · নুসাইবা আইটি সেন্টার২৪৭৮
-          </div>
+          <div style={{fontSize:20,fontWeight:800,color:"#fff",marginBottom:20}}>Alihsan Shourov</div>
 
           <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
             <a
@@ -369,9 +339,6 @@ export default function App() {
 
       {/* ─── FOOTER ─── */}
       <footer style={{position:"relative",zIndex:1,borderTop:"1px solid rgba(255,255,255,.06)",padding:"30px 24px",textAlign:"center"}}>
-        <div style={{fontSize:15,fontWeight:700,color:"rgba(255,255,255,.45)",marginBottom:6}}>
-          নুসাইবা আইটি সেন্টার২৪৭৮ &nbsp;|&nbsp; Nusaiba IT Center 2478
-        </div>
         <div style={{fontSize:12,color:"rgba(255,255,255,.25)"}}>
           Developed by&nbsp;
           <a href={FB_LINK} target="_blank" rel="noreferrer" style={{color:"#6ab0ff",textDecoration:"none"}}>Alihsan Shourov</a>
