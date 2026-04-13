@@ -1,1 +1,366 @@
-(function(){var _0x1a2b=["KGZ1bmN0aW9uKCl7CiAgICBmdW5jdGlvbiB0aWNrKCl7CiAgICAgIHZhciBl","bD1kb2N1bWVudC5nZXRFbGVtZW50QnlJZCgnYmRDbG9jaycpO2lmKCFlbCly","ZXR1cm47CiAgICAgIHZhciBub3c9bmV3IERhdGUoKSx1dGM9bm93LmdldFRp","bWUoKStub3cuZ2V0VGltZXpvbmVPZmZzZXQoKSo2MDAwMDsKICAgICAgdmFy","IGJkPW5ldyBEYXRlKHV0Yys2KjM2MDAwMDApOwogICAgICB2YXIgaD1iZC5n","ZXRIb3VycygpLG09YmQuZ2V0TWludXRlcygpLHM9YmQuZ2V0U2Vjb25kcygp","OwogICAgICB2YXIgYW1wbT1oPj0xMj8nUE0nOidBTSc7aD1oJTEyfHwxMjsK","ICAgICAgZWwudGV4dENvbnRlbnQ9KCcwJytoKS5zbGljZSgtMikrJzonKygn","MCcrbSkuc2xpY2UoLTIpKyc6JysoJzAnK3MpLnNsaWNlKC0yKSsnICcrYW1w","bTsKICAgIH0KICAgIHRpY2soKTtzZXRJbnRlcnZhbCh0aWNrLDEwMDApOwog","IH0pKCk7CiAgY29uc3QgQjMyPSJBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZ","WjIzNDU2NyI7CiAgZnVuY3Rpb24gYmFzZTMyRGVjb2RlKGlucHV0KXsKICAg","IGNvbnN0IGNsZWFuPWlucHV0LnRvVXBwZXJDYXNlKCkucmVwbGFjZSgvXHMv","ZywiIikucmVwbGFjZSgvPSskLywiIik7CiAgICBsZXQgYml0cz0wLHZhbHVl","PTAsaWR4PTA7CiAgICBjb25zdCBvdXQ9bmV3IFVpbnQ4QXJyYXkoTWF0aC5m","bG9vcigoY2xlYW4ubGVuZ3RoKjUpLzgpKTsKICAgIGZvcihjb25zdCBjaCBv","ZiBjbGVhbil7Y29uc3QgY2k9QjMyLmluZGV4T2YoY2gpO2lmKGNpPT09LTEp","Y29udGludWU7dmFsdWU9KHZhbHVlPDw1KXxjaTtiaXRzKz01O2lmKGJpdHM+","PTgpe291dFtpZHgrK109KHZhbHVlPj4+KGJpdHMtOCkpJjI1NTtiaXRzLT04","O319CiAgICByZXR1cm4gb3V0LnNsaWNlKDAsaWR4KTsKICB9CiAgYXN5bmMg","ZnVuY3Rpb24gZ2VuZXJhdGVUT1RQKHNlY3JldCl7CiAgICB0cnl7CiAgICAg","IGNvbnN0IGtleUJ5dGVzPWJhc2UzMkRlY29kZShzZWNyZXQpOwogICAgICBp","ZihrZXlCeXRlcy5sZW5ndGg9PT0wKXJldHVybiItLS0tLS0iOwogICAgICBj","b25zdCBjb3VudGVyPU1hdGguZmxvb3IoRGF0ZS5ub3coKS8xMDAwLzMwKTsK","ICAgICAgY29uc3QgYnVmPW5ldyBBcnJheUJ1ZmZlcig4KTtuZXcgRGF0YVZp","ZXcoYnVmKS5zZXRVaW50MzIoNCxjb3VudGVyLGZhbHNlKTsKICAgICAgY29u","c3Qga2V5PWF3YWl0IGNyeXB0by5zdWJ0bGUuaW1wb3J0S2V5KCJyYXciLGtl","eUJ5dGVzLHtuYW1lOiJITUFDIixoYXNoOiJTSEEtMSJ9LGZhbHNlLFsic2ln","biJdKTsKICAgICAgY29uc3Qgc2lnPW5ldyBVaW50OEFycmF5KGF3YWl0IGNy","eXB0by5zdWJ0bGUuc2lnbigiSE1BQyIsa2V5LGJ1ZikpOwogICAgICBjb25z","dCBvPXNpZ1tzaWcubGVuZ3RoLTFdJjB4MGY7CiAgICAgIGNvbnN0IGNvZGU9","KCgoc2lnW29dJjB4N2YpPDwyNCl8KChzaWdbbysxXSYweGZmKTw8MTYpfCgo","c2lnW28rMl0mMHhmZik8PDgpfChzaWdbbyszXSYweGZmKSklMTAwMDAwMDsK","ICAgICAgcmV0dXJuIFN0cmluZyhjb2RlKS5wYWRTdGFydCg2LCIwIik7CiAg","ICB9Y2F0Y2h7cmV0dXJuIi0tLS0tLSI7fQogIH0KICBmdW5jdGlvbiBzZWNz","TGVmdCgpe3JldHVybiAzMC0oTWF0aC5mbG9vcihEYXRlLm5vdygpLzEwMDAp","JTMwKTt9CiAgbGV0IHVpZD0iIixwYXNzPSIiLHNlY3JldD0iIix0b3RwQ29k","ZT0iLS0tLS0tIjsKICBsZXQgbG9hZGluZz1mYWxzZSxkb25lPWZhbHNlLGF1","dG9UaW1lcj1udWxsLGxvZ2luVGFiSWQ9bnVsbCxwb2xsVGltZXI9bnVsbDsK","ICBjb25zdCBjb21ib0lucHV0PWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJj","b21ib0lucHV0Iik7CiAgY29uc3QgcGFyc2VkUm93PWRvY3VtZW50LmdldEVs","ZW1lbnRCeUlkKCJwYXJzZWRSb3ciKTsKICBjb25zdCBwVWlkPWRvY3VtZW50","LmdldEVsZW1lbnRCeUlkKCJwVWlkIik7CiAgY29uc3QgcFBhc3M9ZG9jdW1l","bnQuZ2V0RWxlbWVudEJ5SWQoInBQYXNzIik7CiAgY29uc3QgcFNlY3JldD1k","b2N1bWVudC5nZXRFbGVtZW50QnlJZCgicFNlY3JldCIpOwogIGNvbnN0IHRv","dHBCb3g9ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoInRvdHBCb3giKTsKICBj","b25zdCB0b3RwQ29kZUVsPWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJ0b3Rw","Q29kZSIpOwogIGNvbnN0IGNvdW50ZG93bkFyYz1kb2N1bWVudC5nZXRFbGVt","ZW50QnlJZCgiY291bnRkb3duQXJjIik7CiAgY29uc3QgY291bnRkb3duTnVt","PWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJjb3VudGRvd25OdW0iKTsKICBj","b25zdCBwcm9ncmVzc1dyYXA9ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoInBy","b2dyZXNzV3JhcCIpOwogIGNvbnN0IHByb2dyZXNzRmlsbD1kb2N1bWVudC5n","ZXRFbGVtZW50QnlJZCgicHJvZ3Jlc3NGaWxsIik7CiAgY29uc3Qgc3RhZ2VM","YWJlbD1kb2N1bWVudC5nZXRFbGVtZW50QnlJZCgic3RhZ2VMYWJlbCIpOwog","IGNvbnN0IHN0YWdlUGN0PWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJzdGFn","ZVBjdCIpOwogIGNvbnN0IGxvZ2luQnRuPWRvY3VtZW50LmdldEVsZW1lbnRC","eUlkKCJsb2dpbkJ0biIpOwogIGNvbnN0IGxvZ2luQnRuVGV4dD1kb2N1bWVu","dC5nZXRFbGVtZW50QnlJZCgibG9naW5CdG5UZXh0Iik7CiAgY29uc3Qgc3Vj","Y2Vzc0JveD1kb2N1bWVudC5nZXRFbGVtZW50QnlJZCgic3VjY2Vzc0JveCIp","OwogIGNvbnN0IHVzZWRDb2RlRWw9ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQo","InVzZWRDb2RlIik7CiAgY29uc3QgdG9hc3RFbD1kb2N1bWVudC5nZXRFbGVt","ZW50QnlJZCgidG9hc3QiKTsKICBsZXQgdG9hc3RUaW1lcj1udWxsOwogIGZ1","bmN0aW9uIHNob3dUb2FzdChtc2csY29sb3I9IiMxODc3RjIiKXsKICAgIHRv","YXN0RWwudGV4dENvbnRlbnQ9bXNnO3RvYXN0RWwuc3R5bGUuYmFja2dyb3Vu","ZD1jb2xvcisiZTgiO3RvYXN0RWwuc3R5bGUuZGlzcGxheT0iYmxvY2siOwog","ICAgY2xlYXJUaW1lb3V0KHRvYXN0VGltZXIpO3RvYXN0VGltZXI9c2V0VGlt","ZW91dCgoKT0+e3RvYXN0RWwuc3R5bGUuZGlzcGxheT0ibm9uZSI7fSw0MDAw","KTsKICB9CiAgZnVuY3Rpb24gc2V0UHJvZ3Jlc3MobGFiZWwscGN0KXsKICAg","IHByb2dyZXNzV3JhcC5zdHlsZS5kaXNwbGF5PSJmbGV4IjtzdGFnZUxhYmVs","LnRleHRDb250ZW50PWxhYmVsOwogICAgc3RhZ2VQY3QudGV4dENvbnRlbnQ9","cGN0KyIlIjtwcm9ncmVzc0ZpbGwuc3R5bGUud2lkdGg9cGN0KyIlIjsKICB9","CiAgZnVuY3Rpb24gc2xlZXAobXMpe3JldHVybiBuZXcgUHJvbWlzZShyPT5z","ZXRUaW1lb3V0KHIsbXMpKTt9CiAgZnVuY3Rpb24gc3RvcFBvbGwoKXtpZihw","b2xsVGltZXIpe2NsZWFySW50ZXJ2YWwocG9sbFRpbWVyKTtwb2xsVGltZXI9","bnVsbDt9fQogIGZ1bmN0aW9uIHBhcnNlTGluZShsaW5lKXsKICAgIGNvbnN0","IHBhcnRzPWxpbmUuc3BsaXQoIlx0Iik7CiAgICBpZihwYXJ0cy5sZW5ndGg+","PTIgJiYgcGFydHNbMF0udHJpbSgpICYmIHBhcnRzWzFdLnRyaW0oKSl7CiAg","ICAgIHVpZD1wYXJ0c1swXS5yZXBsYWNlKC9ccy9nLCIiKTsKICAgICAgcGFz","cz1wYXJ0c1sxXS5yZXBsYWNlKC9ccy9nLCIiKTsKICAgICAgc2VjcmV0PXBh","cnRzLmxlbmd0aD49MyA/IHBhcnRzLnNsaWNlKDIpLmpvaW4oIiAiKS5yZXBs","YWNlKC9ccy9nLCIiKSA6ICIiOwogICAgICBwYXJzZWRSb3cuc3R5bGUuZGlz","cGxheT0iZ3JpZCI7CiAgICAgIHBVaWQudGV4dENvbnRlbnQ9dWlkfHwi4oCU","IjsKICAgICAgcFBhc3MudGV4dENvbnRlbnQ9cGFzcz8i4oCi4oCi4oCi4oCi","4oCi4oCiIjoi4oCUIjsKICAgICAgcFNlY3JldC50ZXh0Q29udGVudD1zZWNy","ZXQ/c2VjcmV0LnNsaWNlKDAsNikrIuKApiI6IuCmqOCnh+CmhyI7CiAgICAg","IGlmKHNlY3JldCl7IHN0YXJ0VE9UUCgpOyB9IGVsc2UgeyB0b3RwQm94LnN0","eWxlLmRpc3BsYXk9Im5vbmUiOyB9CiAgICAgIGxvZ2luQnRuLmRpc2FibGVk","PWZhbHNlOwogICAgICByZXR1cm4gdHJ1ZTsKICAgIH0KICAgIHBhcnNlZFJv","dy5zdHlsZS5kaXNwbGF5PSJub25lIjt0b3RwQm94LnN0eWxlLmRpc3BsYXk9","Im5vbmUiO2xvZ2luQnRuLmRpc2FibGVkPXRydWU7cmV0dXJuIGZhbHNlOwog","IH0KICBhc3luYyBmdW5jdGlvbiByZWZyZXNoVE9UUCgpe2lmKCFzZWNyZXQp","cmV0dXJuO3RvdHBDb2RlPWF3YWl0IGdlbmVyYXRlVE9UUChzZWNyZXQpO3Rv","dHBDb2RlRWwudGV4dENvbnRlbnQ9dG90cENvZGU7fQogIGZ1bmN0aW9uIHVw","ZGF0ZUNvdW50ZG93bigpe2NvbnN0IHM9c2Vjc0xlZnQoKTtjb3VudGRvd25O","dW0udGV4dENvbnRlbnQ9cztjb3VudGRvd25BcmMuc2V0QXR0cmlidXRlKCJz","dHJva2UtZGFzaGFycmF5IixgJHsocy8zMCkqOTQuMn0gOTQuMmApO2lmKHM9","PT0zMClyZWZyZXNoVE9UUCgpO30KICBmdW5jdGlvbiBzdGFydFRPVFAoKXtp","Zighc2VjcmV0KXJldHVybjt0b3RwQm94LnN0eWxlLmRpc3BsYXk9ImZsZXgi","O3JlZnJlc2hUT1RQKCk7dXBkYXRlQ291bnRkb3duKCk7fQogIGNvbnN0IENB","UFRDSEFfQ0xJQ0tFUiA9IGZ1bmN0aW9uKCl7CiAgICB2YXIgY2xpY2tlZCA9","IGZhbHNlOwogICAgdHJ5IHsKICAgICAgdmFyIGZyYW1lcyA9IGRvY3VtZW50","LnF1ZXJ5U2VsZWN0b3JBbGwoJ2lmcmFtZVtzcmMqPSJyZWNhcHRjaGEiXScp","OwogICAgICBmcmFtZXMuZm9yRWFjaChmdW5jdGlvbihmcmFtZSl7CiAgICAg","ICAgdHJ5ewogICAgICAgICAgdmFyIGNiID0gZnJhbWUuY29udGVudERvY3Vt","ZW50ICYmIGZyYW1lLmNvbnRlbnREb2N1bWVudC5xdWVyeVNlbGVjdG9yKCcu","cmVjYXB0Y2hhLWNoZWNrYm94Jyk7CiAgICAgICAgICBpZihjYiAmJiAhY2xp","Y2tlZCl7IGNiLmNsaWNrKCk7IGNsaWNrZWQ9dHJ1ZTsgfQogICAgICAgIH1j","YXRjaChlKXt9CiAgICAgIH0pOwogICAgfSBjYXRjaChlKXt9CiAgICBpZigh","Y2xpY2tlZCl7CiAgICAgIHZhciBjaGVja2JveGVzID0gZG9jdW1lbnQucXVl","cnlTZWxlY3RvckFsbCgnaW5wdXRbdHlwZT0iY2hlY2tib3giXScpOwogICAg","ICBjaGVja2JveGVzLmZvckVhY2goZnVuY3Rpb24oY2IpewogICAgICAgIGlm","KCFjbGlja2VkICYmIGNiLm9mZnNldFBhcmVudCAhPT0gbnVsbCl7CiAgICAg","ICAgICB0cnl7IGNiLmNsaWNrKCk7IGNsaWNrZWQ9dHJ1ZTsgfWNhdGNoKGUp","e30KICAgICAgICB9CiAgICAgIH0pOwogICAgfQogICAgaWYoIWNsaWNrZWQp","ewogICAgICB2YXIgYWxsRWxzID0gZG9jdW1lbnQucXVlcnlTZWxlY3RvckFs","bCgnZGl2LHNwYW4sbGFiZWwnKTsKICAgICAgYWxsRWxzLmZvckVhY2goZnVu","Y3Rpb24oZWwpewogICAgICAgIGlmKCFjbGlja2VkKXsKICAgICAgICAgIHZh","ciB0eHQgPSAoZWwudGV4dENvbnRlbnR8fCcnKS50cmltKCkudG9Mb3dlckNh","c2UoKTsKICAgICAgICAgIGlmKCh0eHQgPT09ICJpJ20gbm90IGEgcm9ib3Qi","IHx8IHR4dCA9PT0gIm5vdCBhIHJvYm90IiB8fCB0eHQgPT09ICLgpobgpq7g","pr8g4Kaw4KeL4Kas4KafIOCmqOCmhyIpICYmIGVsLm9mZnNldFBhcmVudCE9","PW51bGwpewogICAgICAgICAgICB0cnl7IGVsLmNsaWNrKCk7IGNsaWNrZWQ9","dHJ1ZTsgfWNhdGNoKGUpe30KICAgICAgICAgIH0KICAgICAgICB9CiAgICAg","IH0pOwogICAgfQogICAgaWYoIWNsaWNrZWQpewogICAgICB2YXIgcmNFbCA9","IGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoJy5yYy1hbmNob3ItY2VudGVyLWl0","ZW0nKSB8fAogICAgICAgICAgICAgICAgIGRvY3VtZW50LnF1ZXJ5U2VsZWN0","b3IoJy5yZWNhcHRjaGEtY2hlY2tib3gtYm9yZGVyJykgfHwKICAgICAgICAg","ICAgICAgICBkb2N1bWVudC5xdWVyeVNlbGVjdG9yKCdbaWQqPSJyZWNhcHRj","aGEtYW5jaG9yIl0nKTsKICAgICAgaWYocmNFbCl7IHRyeXsgcmNFbC5jbGlj","aygpOyBjbGlja2VkPXRydWU7IH1jYXRjaChlKXt9IH0KICAgIH0KICAgIHJl","dHVybiBjbGlja2VkID8gJ2NsaWNrZWQnIDogJ25vdF9mb3VuZCc7CiAgfTsK","ICBjb25zdCBQQUdFX0RFVEVDVE9SID0gZnVuY3Rpb24oKXsKICAgIHZhciB1","cmwgPSB3aW5kb3cubG9jYXRpb24uaHJlZjsKICAgIGlmKHVybC5tYXRjaCgv","ZmFjZWJvb2tcLmNvbVwvPyQvKSB8fCB1cmwuaW5jbHVkZXMoJy9ob21lJykp","ewogICAgICBpZighZG9jdW1lbnQucXVlcnlTZWxlY3RvcignaW5wdXRbbmFt","ZT0iZW1haWwiXScpICYmICFkb2N1bWVudC5xdWVyeVNlbGVjdG9yKCdpbnB1","dFtuYW1lPSJwYXNzIl0nKSl7CiAgICAgICAgcmV0dXJuICdzdWNjZXNzJzsK","ICAgICAgfQogICAgfQogICAgaWYoZG9jdW1lbnQucXVlcnlTZWxlY3Rvcign","aW5wdXRbbmFtZT0iZW1haWwiXScpICYmIGRvY3VtZW50LnF1ZXJ5U2VsZWN0","b3IoJ2lucHV0W25hbWU9InBhc3MiXScpKXsKICAgICAgcmV0dXJuICdsb2dp","bic7CiAgICB9CiAgICB2YXIgaGFzQ2FwdGNoYSA9ICEhZG9jdW1lbnQucXVl","cnlTZWxlY3RvcignaWZyYW1lW3NyYyo9InJlY2FwdGNoYSJdJykgfHwKICAg","ICAgICAgICAgICAgICAgICAgISFkb2N1bWVudC5xdWVyeVNlbGVjdG9yKCcu","Zy1yZWNhcHRjaGEnKSB8fAogICAgICAgICAgICAgICAgICAgICAhIWRvY3Vt","ZW50LnF1ZXJ5U2VsZWN0b3IoJ1tkYXRhLXRlc3RpZD0iY2FwdGNoYSJdJykg","fHwKICAgICAgICAgICAgICAgICAgICAgKGRvY3VtZW50LmJvZHkuaW5uZXJI","VE1MfHwnJykuaW5jbHVkZXMoJ25vdCBhIHJvYm90JykgfHwKICAgICAgICAg","ICAgICAgICAgICAgKGRvY3VtZW50LmJvZHkuaW5uZXJIVE1MfHwnJykuaW5j","bHVkZXMoJ3JlQ0FQVENIQScpOwogICAgdmFyIGNvZGVJbnB1dCA9IGRvY3Vt","ZW50LnF1ZXJ5U2VsZWN0b3IoJ2lucHV0W2FyaWEtbGFiZWw9IkNvZGUiXScp","IHx8CiAgICAgICAgICAgICAgICAgICAgZG9jdW1lbnQucXVlcnlTZWxlY3Rv","cignaW5wdXRbcGxhY2Vob2xkZXI9IkNvZGUiXScpIHx8CiAgICAgICAgICAg","ICAgICAgICAgZG9jdW1lbnQucXVlcnlTZWxlY3RvcignaW5wdXRbbmFtZT0i","YXBwcm92YWxzX2NvZGUiXScpIHx8CiAgICAgICAgICAgICAgICAgICAgZG9j","dW1lbnQucXVlcnlTZWxlY3RvcignaW5wdXRbYXV0b2NvbXBsZXRlPSJvbmUt","dGltZS1jb2RlIl0nKTsKICAgIGlmKGNvZGVJbnB1dCkgcmV0dXJuICcyZmEn","OwogICAgaWYoaGFzQ2FwdGNoYSkgcmV0dXJuICdjYXB0Y2hhJzsKICAgIHZh","ciBhbGwyZmEgPSBBcnJheS5mcm9tKGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3JB","bGwoJ2lucHV0W3R5cGU9InRleHQiXSxpbnB1dFt0eXBlPSJudW1iZXIiXScp","KTsKICAgIHZhciBmb3VuZDJmYSA9IGFsbDJmYS5maW5kKGZ1bmN0aW9uKGVs","KXsKICAgICAgcmV0dXJuIGVsLm9mZnNldFBhcmVudCE9PW51bGwgJiYKICAg","ICAgICAgICAgICFlbC5uYW1lLmluY2x1ZGVzKCdlbWFpbCcpICYmCiAgICAg","ICAgICAgICAhZWwubmFtZS5pbmNsdWRlcygncGFzcycpICYmCiAgICAgICAg","ICAgICAoZG9jdW1lbnQuYm9keS50ZXh0Q29udGVudHx8JycpLm1hdGNoKC9h","dXRoZW50aWNhdGlvbnwyRkF8dHdvLmZhY3Rvcnw2LmRpZ2l0fGNvZGUvaSk7","CiAgICB9KTsKICAgIGlmKGZvdW5kMmZhKSByZXR1cm4gJzJmYSc7CiAgICBy","ZXR1cm4gJ3Vua25vd24nOwogIH07CiAgZnVuY3Rpb24gaW5qZWN0MkZBQ29k","ZSh0YWJJZCwgb3RwLCBjYil7CiAgICBjaHJvbWUuc2NyaXB0aW5nLmV4ZWN1","dGVTY3JpcHQoewogICAgICB0YXJnZXQ6e3RhYklkfSwKICAgICAgZnVuYzpm","dW5jdGlvbihvdHApewogICAgICAgIGZ1bmN0aW9uIHNldFZhbChlbCx2YWwp","ewogICAgICAgICAgdHJ5e3ZhciBkPU9iamVjdC5nZXRPd25Qcm9wZXJ0eURl","c2NyaXB0b3Iod2luZG93LkhUTUxJbnB1dEVsZW1lbnQucHJvdG90eXBlLCd2","YWx1ZScpO2lmKGQmJmQuc2V0KWQuc2V0LmNhbGwoZWwsdmFsKTt9Y2F0Y2go","ZSl7ZWwudmFsdWU9dmFsO30KICAgICAgICAgIGVsLmRpc3BhdGNoRXZlbnQo","bmV3IEV2ZW50KCdpbnB1dCcse2J1YmJsZXM6dHJ1ZX0pKTsKICAgICAgICAg","IGVsLmRpc3BhdGNoRXZlbnQobmV3IEV2ZW50KCdjaGFuZ2UnLHtidWJibGVz","OnRydWV9KSk7CiAgICAgICAgfQogICAgICAgIHZhciBjb2RlRWwgPSBkb2N1","bWVudC5xdWVyeVNlbGVjdG9yKCdpbnB1dFthcmlhLWxhYmVsPSJDb2RlIl0n","KSB8fAogICAgICAgICAgICAgICAgICAgICBkb2N1bWVudC5xdWVyeVNlbGVj","dG9yKCdpbnB1dFtwbGFjZWhvbGRlcj0iQ29kZSJdJykgfHwKICAgICAgICAg","ICAgICAgICAgICAgZG9jdW1lbnQucXVlcnlTZWxlY3RvcignaW5wdXRbbmFt","ZT0iYXBwcm92YWxzX2NvZGUiXScpIHx8CiAgICAgICAgICAgICAgICAgICAg","IGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoJ2lucHV0W2F1dG9jb21wbGV0ZT0i","b25lLXRpbWUtY29kZSJdJykgfHwKICAgICAgICAgICAgICAgICAgICAgKGZ1","bmN0aW9uKCl7CiAgICAgICAgICAgICAgICAgICAgICAgdmFyIGFsbD1BcnJh","eS5mcm9tKGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3JBbGwoJ2lucHV0W3R5cGU9","InRleHQiXSxpbnB1dFt0eXBlPSJudW1iZXIiXScpKTsKICAgICAgICAgICAg","ICAgICAgICAgICByZXR1cm4gYWxsLmZpbmQoZnVuY3Rpb24oZWwpewogICAg","ICAgICAgICAgICAgICAgICAgICAgcmV0dXJuIGVsLm9mZnNldFBhcmVudCE9","PW51bGwmJiFlbC5uYW1lLmluY2x1ZGVzKCdlbWFpbCcpJiYhZWwubmFtZS5p","bmNsdWRlcygncGFzcycpOwogICAgICAgICAgICAgICAgICAgICAgIH0pOwog","ICAgICAgICAgICAgICAgICAgICB9KSgpOwogICAgICAgIGlmKCFjb2RlRWwp","IHJldHVybiAnbm9faW5wdXQnOwogICAgICAgIGNvZGVFbC5mb2N1cygpOwog","ICAgICAgIHNldFZhbChjb2RlRWwsIG90cCk7CiAgICAgICAgc2V0VGltZW91","dChmdW5jdGlvbigpewogICAgICAgICAgdmFyIGJ0biA9IGRvY3VtZW50LnF1","ZXJ5U2VsZWN0b3IoJ2J1dHRvblt0eXBlPSJzdWJtaXQiXScpIHx8CiAgICAg","ICAgICAgICAgICAgICAgKGZ1bmN0aW9uKCl7CiAgICAgICAgICAgICAgICAg","ICAgICB2YXIgYnRucz1BcnJheS5mcm9tKGRvY3VtZW50LnF1ZXJ5U2VsZWN0","b3JBbGwoJ2J1dHRvbixkaXZbcm9sZT0iYnV0dG9uIl0nKSk7CiAgICAgICAg","ICAgICAgICAgICAgICByZXR1cm4gYnRucy5maW5kKGZ1bmN0aW9uKGIpewog","ICAgICAgICAgICAgICAgICAgICAgICB2YXIgdD0oYi50ZXh0Q29udGVudHx8","JycpLnRyaW0oKS50b0xvd2VyQ2FzZSgpOwogICAgICAgICAgICAgICAgICAg","ICAgICByZXR1cm4gdD09PSdjb250aW51ZSd8fHQ9PT0nc3VibWl0J3x8dD09","PSdjb25maXJtJ3x8dD09PSduZXh0JzsKICAgICAgICAgICAgICAgICAgICAg","IH0pOwogICAgICAgICAgICAgICAgICAgIH0pKCk7CiAgICAgICAgICBpZihi","dG4pIGJ0bi5jbGljaygpOwogICAgICAgIH0sIDUwMCk7CiAgICAgICAgcmV0","dXJuICdvayc7CiAgICAgIH0sCiAgICAgIGFyZ3M6W290cF0KICAgIH0sIGZ1","bmN0aW9uKHIpeyBpZihjYikgY2IociYmclswXSYmclswXS5yZXN1bHQpOyB9","KTsKICB9CiAgZnVuY3Rpb24gdHJ5Q2FwdGNoYUF1dG9DbGljayh0YWJJZCwg","b25Eb25lKXsKICAgIGNocm9tZS5zY3JpcHRpbmcuZXhlY3V0ZVNjcmlwdCh7","CiAgICAgIHRhcmdldDp7dGFiSWQsIGFsbEZyYW1lczp0cnVlfSwKICAgICAg","ZnVuYzogQ0FQVENIQV9DTElDS0VSCiAgICB9LCBmdW5jdGlvbihyZXN1bHRz","KXsKICAgICAgdmFyIGNsaWNrZWQgPSByZXN1bHRzICYmIHJlc3VsdHMuc29t","ZShmdW5jdGlvbihyKXsgcmV0dXJuIHIgJiYgci5yZXN1bHQgPT09ICdjbGlj","a2VkJzsgfSk7CiAgICAgIGlmKG9uRG9uZSkgb25Eb25lKGNsaWNrZWQpOwog","ICAgfSk7CiAgfQogIGZ1bmN0aW9uIHN0YXJ0UG9sbGluZyh0YWJJZCl7CiAg","ICB2YXIgcG9sbENvdW50PTA7CiAgICB2YXIgbWF4UG9sbHM9ODA7CiAgICB2","YXIgY2FwdGNoYU5vdGlmaWVkPWZhbHNlOwogICAgdmFyIGNhcHRjaGFDbGlj","a1RyeT0wOwogICAgcG9sbFRpbWVyPXNldEludGVydmFsKGZ1bmN0aW9uKCl7","CiAgICAgIHBvbGxDb3VudCsrOwogICAgICBpZihwb2xsQ291bnQ+bWF4UG9s","bHN8fGRvbmUpe3N0b3BQb2xsKCk7cmV0dXJuO30KICAgICAgY2hyb21lLnNj","cmlwdGluZy5leGVjdXRlU2NyaXB0KHsKICAgICAgICB0YXJnZXQ6e3RhYklk","fSwKICAgICAgICBmdW5jOiBQQUdFX0RFVEVDVE9SCiAgICAgIH0sIGZ1bmN0","aW9uKHJlc3VsdHMpewogICAgICAgIGlmKGNocm9tZS5ydW50aW1lLmxhc3RF","cnJvcnx8IXJlc3VsdHN8fCFyZXN1bHRzWzBdKXJldHVybjsKICAgICAgICB2","YXIgcGFnZVR5cGU9cmVzdWx0c1swXS5yZXN1bHQ7CiAgICAgICAgaWYocGFn","ZVR5cGU9PT0nY2FwdGNoYScpewogICAgICAgICAgY2FwdGNoYUNsaWNrVHJ5","Kys7CiAgICAgICAgICBpZihjYXB0Y2hhQ2xpY2tUcnkgJSAzID09PSAxKXsK","ICAgICAgICAgICAgdHJ5Q2FwdGNoYUF1dG9DbGljayh0YWJJZCwgZnVuY3Rp","b24oY2xpY2tlZCl7CiAgICAgICAgICAgICAgaWYoY2xpY2tlZCl7CiAgICAg","ICAgICAgICAgICBzZXRQcm9ncmVzcygiQ0FQVENIQSBhdXRvLWNsaWNrIOCm","leCmsOCmviDgprngpq/gprzgp4fgppvgp4chIOCmheCmquCnh+CmleCnjeCm","t+CmviDgppXgprDgp4HgpqguLi4iLDY1KTsKICAgICAgICAgICAgICAgIGxv","Z2luQnRuVGV4dC5pbm5lckhUTUw9J+KPsyBDQVBUQ0hBIHNvbHZlIOCmueCm","muCnjeCmm+Cnhy4uLic7CiAgICAgICAgICAgICAgICBzaG93VG9hc3QoIkNB","UFRDSEEgYXV0by1jbGljayDgppXgprDgpr4g4Ka54Kav4Ka84KeH4Kab4KeH","ISDinIUiLCIjZjU5ZTBiIik7CiAgICAgICAgICAgICAgfSBlbHNlIHsKICAg","ICAgICAgICAgICAgIGlmKCFjYXB0Y2hhTm90aWZpZWQpewogICAgICAgICAg","ICAgICAgICBjYXB0Y2hhTm90aWZpZWQ9dHJ1ZTsKICAgICAgICAgICAgICAg","ICAgc2V0UHJvZ3Jlc3MoIkNBUFRDSEEg4KaG4Kab4KeHIOKAlCBhdXRvLWNs","aWNrIOCmmuCnh+Cmt+CnjeCmn+CmviDgpprgprLgppvgp4cuLi4iLDYwKTsK","ICAgICAgICAgICAgICAgICAgbG9naW5CdG5UZXh0LmlubmVySFRNTD0n4o+z","IENBUFRDSEEgc29sdmUg4KaV4Kaw4Ka+4KawIOCmmuCnh+Cmt+CnjeCmn+Cm","vi4uLic7CiAgICAgICAgICAgICAgICAgIHNob3dUb2FzdCgiQ0FQVENIQSDg","pqbgp4fgppbgpr4g4Kav4Ka+4Kaa4KeN4Kab4KeHLCBhdXRvLWNsaWNrIOCm","muCnh+Cmt+CnjeCmn+CmviDgpprgprLgppvgp4cuLi4iLCIjZjU5ZTBiIik7","CiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgfQogICAgICAgICAg","ICB9KTsKICAgICAgICAgIH0KICAgICAgICB9IGVsc2UgaWYocGFnZVR5cGU9","PT0nMmZhJyl7CiAgICAgICAgICBjYXB0Y2hhTm90aWZpZWQ9ZmFsc2U7CiAg","ICAgICAgICBpZighc2VjcmV0KXsKICAgICAgICAgICAgc3RvcFBvbGwoKTsK","ICAgICAgICAgICAgc2V0UHJvZ3Jlc3MoIjJGQSDgpprgpr7gpofgppvgp4cg","4KaV4Ka/4Kao4KeN4Kak4KeBIGtleSDgpqjgp4fgpochIiw3NSk7CiAgICAg","ICAgICAgIGxvZ2luQnRuVGV4dC5pbm5lckhUTUw9J+KaoO+4jyAyRkEga2V5","IOCmpuCnh+Cmk+Cmr+CmvOCmviDgprngpq/gprzgpqjgpr8nOwogICAgICAg","ICAgICBzaG93VG9hc3QoIuCmj+CmhyBJRCDgpqTgp4cgMkZBIOCmhuCmm+Cn","hyDgppXgpr/gpqjgp43gpqTgp4Ega2V5IOCmpuCnh+CmqOCmqOCmvyEiLCIj","ZTUzZTNlIik7CiAgICAgICAgICAgIGxvYWRpbmc9ZmFsc2U7CiAgICAgICAg","ICAgIGxvZ2luQnRuLmRpc2FibGVkPWZhbHNlOwogICAgICAgICAgICByZXR1","cm47CiAgICAgICAgICB9CiAgICAgICAgICBzZXRQcm9ncmVzcygiMkZBIGNv","ZGUg4Kam4KeH4KaT4Kav4Ka84Ka+IOCmueCmmuCnjeCmm+Cnhy4uLiIsODAp","OwogICAgICAgICAgbG9naW5CdG5UZXh0LmlubmVySFRNTD0nPGRpdiBjbGFz","cz0ic3Bpbm5lciI+PC9kaXY+IDJGQTogJyt0b3RwQ29kZTsKICAgICAgICAg","IHNob3dUb2FzdCgiMkZBIHBhZ2UhIENvZGU6ICIrdG90cENvZGUsIiMyNUQz","NjYiKTsKICAgICAgICAgIHN0b3BQb2xsKCk7CiAgICAgICAgICBnZW5lcmF0","ZVRPVFAoc2VjcmV0KS50aGVuKGZ1bmN0aW9uKG5ld0NvZGUpewogICAgICAg","ICAgICB0b3RwQ29kZT1uZXdDb2RlO3RvdHBDb2RlRWwudGV4dENvbnRlbnQ9","bmV3Q29kZTsKICAgICAgICAgICAgaW5qZWN0MkZBQ29kZSh0YWJJZCwgbmV3","Q29kZSwgZnVuY3Rpb24ocmVzKXsKICAgICAgICAgICAgICBpZihyZXM9PT0n","b2snKXsKICAgICAgICAgICAgICAgIHNldFByb2dyZXNzKCIyRkEg4Kam4KeH","4KaT4Kav4Ka84Ka+IOCmueCmr+CmvOCnh+Cmm+CnhyEg4pyFIiw5NSk7CiAg","ICAgICAgICAgICAgICBsb2dpbkJ0blRleHQuaW5uZXJIVE1MPSfinIUgMkZB","IOCmuOCmruCnjeCmquCmqOCnjeCmqCEnOwogICAgICAgICAgICAgICAgdXNl","ZENvZGVFbC50ZXh0Q29udGVudD0iMkZBOiAiK25ld0NvZGU7CiAgICAgICAg","ICAgICAgICBzdWNjZXNzQm94LnN0eWxlLmRpc3BsYXk9ImJsb2NrIjsKICAg","ICAgICAgICAgICAgIHNob3dUb2FzdCgiMkZBIOCmleCni+CmoSAiK25ld0Nv","ZGUrIiDgpqbgp4fgppPgpq/gprzgpr4g4Ka54Kav4Ka84KeH4Kab4KeHISDi","nIUiLCIjMjVEMzY2Iik7CiAgICAgICAgICAgICAgICBsb2FkaW5nPWZhbHNl","O2RvbmU9dHJ1ZTsKICAgICAgICAgICAgICB9IGVsc2UgewogICAgICAgICAg","ICAgICAgc3RhcnRQb2xsaW5nKHRhYklkKTsKICAgICAgICAgICAgICB9CiAg","ICAgICAgICAgIH0pOwogICAgICAgICAgfSk7CiAgICAgICAgfSBlbHNlIGlm","KHBhZ2VUeXBlPT09J3N1Y2Nlc3MnKXsKICAgICAgICAgIHN0b3BQb2xsKCk7","CiAgICAgICAgICBzZXRQcm9ncmVzcygi4Kay4KaX4KaH4KaoIOCmuOCmruCn","jeCmquCmqOCnjeCmqCEg4pyFIiwxMDApOwogICAgICAgICAgbG9naW5CdG5U","ZXh0LmlubmVySFRNTD0n4pyFIOCmsuCml+Cmh+CmqCDgprjgpq7gp43gpqrg","pqjgp43gpqghJzsKICAgICAgICAgIHVzZWRDb2RlRWwudGV4dENvbnRlbnQ9","IkxvZ2luIFN1Y2Nlc3Mg4pyFIjsKICAgICAgICAgIHN1Y2Nlc3NCb3guc3R5","bGUuZGlzcGxheT0iYmxvY2siOwogICAgICAgICAgc2hvd1RvYXN0KCLgprLg","ppfgpofgpqgg4Ka44Kar4KayISDinIUiLCIjMjVEMzY2Iik7CiAgICAgICAg","ICBsb2FkaW5nPWZhbHNlO2RvbmU9dHJ1ZTsKICAgICAgICB9CiAgICAgIH0p","OwogICAgfSwgMTUwMCk7CiAgfQogIGZ1bmN0aW9uIGluamVjdExvZ2luRm9y","bSh0YWJJZCl7CiAgICBjaHJvbWUuc2NyaXB0aW5nLmV4ZWN1dGVTY3JpcHQo","ewogICAgICB0YXJnZXQ6e3RhYklkfSwKICAgICAgZnVuYzpmdW5jdGlvbihl","bWFpbCxwdyl7CiAgICAgICAgZnVuY3Rpb24gc2V0VmFsKGVsLHZhbCl7CiAg","ICAgICAgICB0cnl7dmFyIGQ9T2JqZWN0LmdldE93blByb3BlcnR5RGVzY3Jp","cHRvcih3aW5kb3cuSFRNTElucHV0RWxlbWVudC5wcm90b3R5cGUsJ3ZhbHVl","Jyk7aWYoZCYmZC5zZXQpZC5zZXQuY2FsbChlbCx2YWwpO31jYXRjaChlKXtl","bC52YWx1ZT12YWw7fQogICAgICAgICAgZWwuZGlzcGF0Y2hFdmVudChuZXcg","RXZlbnQoJ2lucHV0Jyx7YnViYmxlczp0cnVlfSkpOwogICAgICAgICAgZWwu","ZGlzcGF0Y2hFdmVudChuZXcgRXZlbnQoJ2NoYW5nZScse2J1YmJsZXM6dHJ1","ZX0pKTsKICAgICAgICB9CiAgICAgICAgdmFyIGVtYWlsRWw9ZG9jdW1lbnQu","cXVlcnlTZWxlY3RvcignaW5wdXRbbmFtZT0iZW1haWwiXScpfHxkb2N1bWVu","dC5nZXRFbGVtZW50QnlJZCgnZW1haWwnKTsKICAgICAgICB2YXIgcGFzc0Vs","PWRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoJ2lucHV0W25hbWU9InBhc3MiXScp","fHxkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgncGFzcycpOwogICAgICAgIGlm","KCFlbWFpbEVsfHwhcGFzc0VsKXJldHVybiAnbm90X2ZvdW5kJzsKICAgICAg","ICBlbWFpbEVsLmZvY3VzKCk7c2V0VmFsKGVtYWlsRWwsZW1haWwpOwogICAg","ICAgIHNldFRpbWVvdXQoZnVuY3Rpb24oKXtwYXNzRWwuZm9jdXMoKTtzZXRW","YWwocGFzc0VsLHB3KTsKICAgICAgICAgIHNldFRpbWVvdXQoZnVuY3Rpb24o","KXsKICAgICAgICAgICAgdmFyIGJ0bj1kb2N1bWVudC5xdWVyeVNlbGVjdG9y","KCdbZGF0YS10ZXN0aWQ9InJveWFsX2xvZ2luX2J1dHRvbiJdJyl8fAogICAg","ICAgICAgICAgICAgICAgIGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoJ2J1dHRv","bltuYW1lPSJsb2dpbiJdJyl8fAogICAgICAgICAgICAgICAgICAgIGRvY3Vt","ZW50LnF1ZXJ5U2VsZWN0b3IoJ2J1dHRvblt0eXBlPSJzdWJtaXQiXScpfHwK","ICAgICAgICAgICAgICAgICAgICBkb2N1bWVudC5xdWVyeVNlbGVjdG9yKCdp","bnB1dFt0eXBlPSJzdWJtaXQiXScpOwogICAgICAgICAgICBpZihidG4pYnRu","LmNsaWNrKCk7CiAgICAgICAgICB9LDQwMCk7CiAgICAgICAgfSwxNTApOwog","ICAgICAgIHJldHVybiAnZmlsbGVkJzsKICAgICAgfSwKICAgICAgYXJnczpb","dWlkLHBhc3NdCiAgICB9LCBmdW5jdGlvbihyZXN1bHRzKXsKICAgICAgdmFy","IHJlcz1yZXN1bHRzJiZyZXN1bHRzWzBdJiZyZXN1bHRzWzBdLnJlc3VsdDsK","ICAgICAgaWYocmVzPT09J2ZpbGxlZCcpewogICAgICAgIHZhciBtc2cgPSBz","ZWNyZXQgPyAiRW1haWwg4KaTIFBhc3N3b3JkIOCmpuCnh+Cmk+Cmr+CmvOCm","viDgprngpq/gprzgp4fgppvgp4cg4pyFIiA6ICJFbWFpbCDgppMgUGFzc3dv","cmQg4Kam4KeH4KaT4Kav4Ka84Ka+IOCmueCmr+CmvOCnh+Cmm+CnhyAoMkZB","IOCmqOCnh+Cmhykg4pyFIjsKICAgICAgICBzZXRQcm9ncmVzcygiTG9naW4g","4Ka54Kaa4KeN4Kab4KeHLi4uIENBUFRDSEEg4Kal4Ka+4KaV4Kay4KeHIGF1","dG8tY2xpY2sg4Ka54Kas4KeHIiw1MCk7CiAgICAgICAgbG9naW5CdG5UZXh0","LmlubmVySFRNTD0nPGRpdiBjbGFzcz0ic3Bpbm5lciI+PC9kaXY+IExvZ2lu","IOCmueCmmuCnjeCmm+Cnhy4uLic7CiAgICAgICAgc2hvd1RvYXN0KG1zZywi","IzE4NzdGMiIpOwogICAgICAgIHN0YXJ0UG9sbGluZyh0YWJJZCk7CiAgICAg","IH0gZWxzZSB7CiAgICAgICAgc2hvd1RvYXN0KCJMb2dpbiBmb3JtIOCmquCm","vuCmk+Cmr+CmvOCmviDgpq/gpr7gpq/gprzgpqjgpr8hIEZhY2Vib29rIHBh","Z2Ug4KaG4Kab4KeHPyIsIiNlNTNlM2UiKTsKICAgICAgICBsb2FkaW5nPWZh","bHNlO2xvZ2luQnRuLmRpc2FibGVkPWZhbHNlO2xvZ2luQnRuVGV4dC50ZXh0","Q29udGVudD0iQXV0byBMb2dpbiDgppXgprDgp4HgpqgiOwogICAgICB9CiAg","ICB9KTsKICB9CiAgYXN5bmMgZnVuY3Rpb24gcnVuTG9naW4oKXsKICAgIGlm","KGxvYWRpbmd8fGRvbmUpcmV0dXJuOwogICAgaWYoIXVpZHx8IXBhc3Mpe3No","b3dUb2FzdCgi4KaG4KaX4KeHIFVJRCDgppMgUGFzc3dvcmQgcGFzdGUg4KaV","4Kaw4KeB4KaoIiwiI2U1M2UzZSIpO3JldHVybjt9CiAgICBsb2FkaW5nPXRy","dWU7bG9naW5CdG4uZGlzYWJsZWQ9dHJ1ZTtzdWNjZXNzQm94LnN0eWxlLmRp","c3BsYXk9Im5vbmUiOwogICAgc3RvcFBvbGwoKTsKICAgIGlmKHNlY3JldCl7","CiAgICAgIHRvdHBDb2RlPWF3YWl0IGdlbmVyYXRlVE9UUChzZWNyZXQpOwog","ICAgICB0b3RwQ29kZUVsLnRleHRDb250ZW50PXRvdHBDb2RlOwogICAgfQog","ICAgc2V0UHJvZ3Jlc3MoIkZhY2Vib29rIHRhYiDgppbgp4vgpoHgppzgpr4g","4Ka54Kaa4KeN4Kab4KeHLi4uIiwxMCk7CiAgICBsb2dpbkJ0blRleHQuaW5u","ZXJIVE1MPSc8ZGl2IGNsYXNzPSJzcGlubmVyIj48L2Rpdj4gVGFiIOCmluCn","i+CmgeCmnOCmviDgprngpprgp43gppvgp4cuLi4nOwogICAgY2hyb21lLnRh","YnMucXVlcnkoe3VybDoiaHR0cHM6Ly93d3cuZmFjZWJvb2suY29tLyoifSxm","dW5jdGlvbihmYlRhYnMpewogICAgICBpZihmYlRhYnMmJmZiVGFicy5sZW5n","dGg+MCl7CiAgICAgICAgbG9naW5UYWJJZD1mYlRhYnNbMF0uaWQ7CiAgICAg","ICAgY2hyb21lLnRhYnMudXBkYXRlKGxvZ2luVGFiSWQse2FjdGl2ZTp0cnVl","fSk7CiAgICAgICAgdmFyIHVybD1mYlRhYnNbMF0udXJsfHwnJzsKICAgICAg","ICBzaG93VG9hc3QoIuCmluCni+CmsuCmviBGYWNlYm9vayB0YWIg4Kaq4Ka+","4KaT4Kav4Ka84Ka+IOCml+Cnh+Cmm+CnhyEiLCIjMTg3N0YyIik7CiAgICAg","ICAgaWYodXJsLmluY2x1ZGVzKCdjaGVja3BvaW50Jyl8fHVybC5pbmNsdWRl","cygnYXBwcm92YWxzJykpewogICAgICAgICAgc2V0UHJvZ3Jlc3MoIkNoZWNr","cG9pbnQgcGFnZS4uLiBhdXRvLWNsaWNrIOCmmuCnh+Cmt+CnjeCmn+CmviDg","ppXgprDgppvgpr8iLDU1KTsKICAgICAgICAgIGxvZ2luQnRuVGV4dC5pbm5l","ckhUTUw9J+KPsyBDQVBUQ0hBIHNvbHZlIOCmleCmsOCmvuCmsCDgpprgp4fg","prfgp43gpp/gpr4uLi4nOwogICAgICAgICAgc2hvd1RvYXN0KCJDQVBUQ0hB","IOCmpuCnh+CmluCmviDgpq/gpr7gpprgp43gppvgp4csIGF1dG8tY2xpY2sg","4Kaa4KeH4Ka34KeN4Kaf4Ka+IOCmleCmsOCmm+CmvyEiLCIjZjU5ZTBiIik7","CiAgICAgICAgICBzdGFydFBvbGxpbmcobG9naW5UYWJJZCk7CiAgICAgICAg","fSBlbHNlIGlmKHVybC5pbmNsdWRlcygnL2xvZ2luJyl8fHVybC5tYXRjaCgv","ZmFjZWJvb2tcLmNvbVwvPyQvKSl7CiAgICAgICAgICBzZXRUaW1lb3V0KGZ1","bmN0aW9uKCl7aW5qZWN0TG9naW5Gb3JtKGxvZ2luVGFiSWQpO30sNDAwKTsK","ICAgICAgICB9IGVsc2UgewogICAgICAgICAgY2hyb21lLnRhYnMudXBkYXRl","KGxvZ2luVGFiSWQse3VybDoiaHR0cHM6Ly93d3cuZmFjZWJvb2suY29tL2xv","Z2luIn0sZnVuY3Rpb24oKXsKICAgICAgICAgICAgc2V0UHJvZ3Jlc3MoIkxv","Z2luIHBhZ2Ug4KaPIOCmr+CmvuCmmuCnjeCmm+Cmvy4uLiIsMTUpOwogICAg","ICAgICAgICBjaHJvbWUudGFicy5vblVwZGF0ZWQuYWRkTGlzdGVuZXIoZnVu","Y3Rpb24gbmF2TChpZCxpbmZvKXsKICAgICAgICAgICAgICBpZihpZD09PWxv","Z2luVGFiSWQmJmluZm8uc3RhdHVzPT09J2NvbXBsZXRlJyl7CiAgICAgICAg","ICAgICAgICBjaHJvbWUudGFicy5vblVwZGF0ZWQucmVtb3ZlTGlzdGVuZXIo","bmF2TCk7CiAgICAgICAgICAgICAgICBzZXRUaW1lb3V0KGZ1bmN0aW9uKCl7","aW5qZWN0TG9naW5Gb3JtKGxvZ2luVGFiSWQpO30sNTAwKTsKICAgICAgICAg","ICAgICB9CiAgICAgICAgICAgIH0pOwogICAgICAgICAgfSk7CiAgICAgICAg","fQogICAgICB9IGVsc2UgewogICAgICAgIGNocm9tZS50YWJzLnF1ZXJ5KHth","Y3RpdmU6dHJ1ZSxjdXJyZW50V2luZG93OnRydWV9LGZ1bmN0aW9uKGFjdGl2","ZSl7CiAgICAgICAgICBpZighYWN0aXZlfHwhYWN0aXZlLmxlbmd0aCl7bG9h","ZGluZz1mYWxzZTtzaG93VG9hc3QoIlRhYiDgpqrgpr7gppPgpq/gprzgpr4g","4Kav4Ka+4Kav4Ka84Kao4Ka/IiwiI2U1M2UzZSIpO3JldHVybjt9CiAgICAg","ICAgICBsb2dpblRhYklkPWFjdGl2ZVswXS5pZDsKICAgICAgICAgIGNocm9t","ZS50YWJzLnVwZGF0ZShsb2dpblRhYklkLHt1cmw6Imh0dHBzOi8vd3d3LmZh","Y2Vib29rLmNvbS9sb2dpbiJ9LGZ1bmN0aW9uKCl7CiAgICAgICAgICAgIHNl","dFByb2dyZXNzKCJGYWNlYm9vayBsb2dpbiBwYWdlIOCmluCni+CmsuCmviDg","prngpprgp43gppvgp4cuLi4iLDE1KTsKICAgICAgICAgICAgY2hyb21lLnRh","YnMub25VcGRhdGVkLmFkZExpc3RlbmVyKGZ1bmN0aW9uIG5hdkwoaWQsaW5m","byl7CiAgICAgICAgICAgICAgaWYoaWQ9PT1sb2dpblRhYklkJiZpbmZvLnN0","YXR1cz09PSdjb21wbGV0ZScpewogICAgICAgICAgICAgICAgY2hyb21lLnRh","YnMub25VcGRhdGVkLnJlbW92ZUxpc3RlbmVyKG5hdkwpOwogICAgICAgICAg","ICAgICAgc2V0VGltZW91dChmdW5jdGlvbigpe2luamVjdExvZ2luRm9ybShs","b2dpblRhYklkKTt9LDUwMCk7CiAgICAgICAgICAgICAgfQogICAgICAgICAg","ICB9KTsKICAgICAgICAgIH0pOwogICAgICAgIH0pOwogICAgICB9CiAgICB9","KTsKICB9CiAgY29tYm9JbnB1dC5hZGRFdmVudExpc3RlbmVyKCJpbnB1dCIs","KCk9PnsKICAgIGRvbmU9ZmFsc2U7bG9hZGluZz1mYWxzZTtzdWNjZXNzQm94","LnN0eWxlLmRpc3BsYXk9Im5vbmUiOwogICAgbG9naW5CdG5UZXh0LnRleHRD","b250ZW50PSJBdXRvIExvZ2luIOCmleCmsOCngeCmqCI7cHJvZ3Jlc3NXcmFw","LnN0eWxlLmRpc3BsYXk9Im5vbmUiOwogICAgc3RvcFBvbGwoKTtjbGVhclRp","bWVvdXQoYXV0b1RpbWVyKTsKICAgIGlmKHBhcnNlTGluZShjb21ib0lucHV0","LnZhbHVlLnRyaW0oKSkpe2F1dG9UaW1lcj1zZXRUaW1lb3V0KCgpPT5ydW5M","b2dpbigpLDMwMCk7fQogIH0pOwogIGxvZ2luQnRuLmFkZEV2ZW50TGlzdGVu","ZXIoImNsaWNrIixydW5Mb2dpbik7CiAgc2V0SW50ZXJ2YWwodXBkYXRlQ291","bnRkb3duLDEwMDApOw=="];var _0x3c4d=_0x1a2b.join("");eval(atob(_0x3c4d));})();
+(function () {
+  // ── BD Clock ──────────────────────────────────────────────
+  function tick() {
+    var el = document.getElementById('bdClock');
+    if (!el) return;
+    var now = new Date();
+    var utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    var bd = new Date(utc + 6 * 3600000);
+    var h = bd.getHours(), m = bd.getMinutes(), s = bd.getSeconds();
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    el.textContent = ('0' + h).slice(-2) + ':' + ('0' + m).slice(-2) + ':' + ('0' + s).slice(-2) + ' ' + ampm;
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ── TOTP / Base32 ─────────────────────────────────────────
+  var B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+  function base32Decode(input) {
+    var clean = input.toUpperCase().replace(/\s/g, "").replace(/=+$/, "");
+    var bits = 0, value = 0, idx = 0;
+    var out = new Uint8Array(Math.floor((clean.length * 5) / 8));
+    for (var i = 0; i < clean.length; i++) {
+      var ci = B32.indexOf(clean[i]);
+      if (ci === -1) continue;
+      value = (value << 5) | ci;
+      bits += 5;
+      if (bits >= 8) { out[idx++] = (value >>> (bits - 8)) & 255; bits -= 8; }
+    }
+    return out.slice(0, idx);
+  }
+
+  async function generateTOTP(secret) {
+    try {
+      var keyBytes = base32Decode(secret);
+      if (keyBytes.length === 0) return "------";
+      var counter = Math.floor(Date.now() / 1000 / 30);
+      var buf = new ArrayBuffer(8);
+      new DataView(buf).setUint32(4, counter, false);
+      var key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+      var sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, buf));
+      var o = sig[sig.length - 1] & 0x0f;
+      var code = (((sig[o] & 0x7f) << 24) | ((sig[o + 1] & 0xff) << 16) | ((sig[o + 2] & 0xff) << 8) | (sig[o + 3] & 0xff)) % 1000000;
+      return String(code).padStart(6, "0");
+    } catch (e) { return "------"; }
+  }
+
+  function secsLeft() { return 30 - (Math.floor(Date.now() / 1000) % 30); }
+
+  // ── State ─────────────────────────────────────────────────
+  var uid = "", pass = "", secret = "", totpCode = "------";
+  var loading = false, done = false, autoTimer = null, loginTabId = null, pollTimer = null;
+  var toastTimer = null;
+
+  // ── DOM ───────────────────────────────────────────────────
+  var comboInput   = document.getElementById("comboInput");
+  var parsedRow    = document.getElementById("parsedRow");
+  var pUid         = document.getElementById("pUid");
+  var pPass        = document.getElementById("pPass");
+  var pSecret      = document.getElementById("pSecret");
+  var totpBox      = document.getElementById("totpBox");
+  var totpCodeEl   = document.getElementById("totpCode");
+  var countdownArc = document.getElementById("countdownArc");
+  var countdownNum = document.getElementById("countdownNum");
+  var progressWrap = document.getElementById("progressWrap");
+  var progressFill = document.getElementById("progressFill");
+  var stageLabel   = document.getElementById("stageLabel");
+  var stagePct     = document.getElementById("stagePct");
+  var loginBtn     = document.getElementById("loginBtn");
+  var loginBtnText = document.getElementById("loginBtnText");
+  var successBox   = document.getElementById("successBox");
+  var usedCodeEl   = document.getElementById("usedCode");
+  var toastEl      = document.getElementById("toast");
+
+  // ── Helpers ───────────────────────────────────────────────
+  function showToast(msg, color) {
+    color = color || "#1877F2";
+    toastEl.textContent = msg;
+    toastEl.style.background = color + "e8";
+    toastEl.style.display = "block";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.style.display = "none"; }, 4000);
+  }
+
+  function setProgress(label, pct) {
+    progressWrap.style.display = "flex";
+    stageLabel.textContent = label;
+    stagePct.textContent = pct + "%";
+    progressFill.style.width = pct + "%";
+  }
+
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function stopPoll() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  // ── Parse input line ──────────────────────────────────────
+  function parseLine(line) {
+    var parts = line.split("\t");
+    if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) {
+      uid    = parts[0].replace(/\s/g, "");
+      pass   = parts[1].replace(/\s/g, "");
+      secret = parts.length >= 3 ? parts.slice(2).join(" ").replace(/\s/g, "") : "";
+      parsedRow.style.display = "grid";
+      pUid.textContent    = uid || "—";
+      pPass.textContent   = pass ? "••••••" : "—";
+      pSecret.textContent = secret ? secret.slice(0, 6) + "…" : "নেই";
+      if (secret) { startTOTP(); } else { totpBox.style.display = "none"; }
+      loginBtn.disabled = false;
+      return true;
+    }
+    parsedRow.style.display = "none";
+    totpBox.style.display   = "none";
+    loginBtn.disabled = true;
+    return false;
+  }
+
+  // ── TOTP display ──────────────────────────────────────────
+  function startTOTP() {
+    totpBox.style.display = "flex";
+    generateTOTP(secret).then(function (c) { totpCode = c; totpCodeEl.textContent = c; });
+    updateCountdown();
+  }
+
+  function updateCountdown() {
+    var secs = secsLeft();
+    var frac = secs / 30;
+    var circ = 94.2;
+    if (countdownArc) countdownArc.style.strokeDasharray = (frac * circ) + " " + circ;
+    if (countdownNum) countdownNum.textContent = secs;
+    if (secs === 30 && secret) {
+      generateTOTP(secret).then(function (c) { totpCode = c; totpCodeEl.textContent = c; });
+    }
+  }
+
+  // ── Polling after login attempt ───────────────────────────
+  function detectPageType(tabId, cb) {
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: function () {
+        var url = location.href;
+        if (url.includes('checkpoint') || url.includes('approvals')) return 'checkpoint';
+        if (document.querySelector('input[name="approvals_code"]') ||
+            document.querySelector('input[name="mfa_code"]')) return 'twofa';
+        if (url.includes('facebook.com') && !url.includes('/login') &&
+            !url.includes('checkpoint')) return 'success';
+        return 'unknown';
+      }
+    }, function (results) {
+      var r = results && results[0] && results[0].result;
+      cb(r || 'unknown');
+    });
+  }
+
+  function injectCheckpointClick(tabId, cb) {
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: function () {
+        var btns = Array.from(document.querySelectorAll('button,input[type="submit"],a'));
+        var clicked = false;
+        var keywords = ['continue','ok','confirm','approve','this was me','আমি ছিলাম'];
+        for (var b of btns) {
+          var txt = (b.textContent || b.value || '').toLowerCase();
+          if (keywords.some(function (k) { return txt.includes(k); })) {
+            b.click(); clicked = true; break;
+          }
+        }
+        return clicked;
+      }
+    }, function (results) {
+      cb(results && results[0] && results[0].result);
+    });
+  }
+
+  function inject2FA(tabId, code, cb) {
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: function (c) {
+        function setVal(el, val) {
+          try {
+            var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+            if (d && d.set) d.set.call(el, val);
+          } catch (e) { el.value = val; }
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        var inp = document.querySelector('input[name="approvals_code"]') ||
+                  document.querySelector('input[name="mfa_code"]') ||
+                  document.querySelector('input[type="tel"]') ||
+                  document.querySelector('input[autocomplete="one-time-code"]');
+        if (!inp) return false;
+        inp.focus(); setVal(inp, c);
+        setTimeout(function () {
+          var btn = document.querySelector('button[type="submit"]') ||
+                    document.querySelector('input[type="submit"]');
+          if (btn) btn.click();
+        }, 300);
+        return true;
+      },
+      args: [code]
+    }, function (results) {
+      cb(results && results[0] && results[0].result);
+    });
+  }
+
+  function startPolling(tabId) {
+    stopPoll();
+    var attempts = 0;
+    pollTimer = setInterval(function () {
+      attempts++;
+      if (attempts > 20) { stopPoll(); loading = false; showToast("Timeout — দেরি হচ্ছে", "#e53e3e"); return; }
+      detectPageType(tabId, function (type) {
+        if (type === 'checkpoint') {
+          setProgress("CAPTCHA / Checkpoint auto-click চেষ্টা...", 60);
+          injectCheckpointClick(tabId, function (clicked) {
+            if (clicked) showToast("Checkpoint button ক্লিক করা হয়েছে!", "#f59e0b");
+          });
+        } else if (type === 'twofa') {
+          stopPoll();
+          setProgress("2FA কোড দেওয়া হচ্ছে...", 80);
+          loginBtnText.innerHTML = '⏳ 2FA দেওয়া হচ্ছে...';
+          generateTOTP(secret).then(function (newCode) {
+            inject2FA(tabId, newCode, function (ok) {
+              if (ok) {
+                setProgress("2FA দেওয়া হয়েছে! ✅", 95);
+                loginBtnText.innerHTML = '✅ 2FA সম্পন্ন!';
+                usedCodeEl.textContent = "2FA: " + newCode;
+                successBox.style.display = "block";
+                showToast("2FA কোড " + newCode + " দেওয়া হয়েছে! ✅", "#25D366");
+                loading = false; done = true;
+              } else {
+                startPolling(tabId);
+              }
+            });
+          });
+        } else if (type === 'success') {
+          stopPoll();
+          setProgress("লগইন সম্পন্ন! ✅", 100);
+          loginBtnText.innerHTML = '✅ লগইন সম্পন্ন!';
+          usedCodeEl.textContent = "Login Success ✅";
+          successBox.style.display = "block";
+          showToast("লগইন সফল! ✅", "#25D366");
+          loading = false; done = true;
+        }
+      });
+    }, 1500);
+  }
+
+  // ── Inject login form ─────────────────────────────────────
+  function injectLoginForm(tabId) {
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: function (email, pw) {
+        function setVal(el, val) {
+          try {
+            var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+            if (d && d.set) d.set.call(el, val);
+          } catch (e) { el.value = val; }
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        var emailEl = document.querySelector('input[name="email"]') || document.getElementById('email');
+        var passEl  = document.querySelector('input[name="pass"]')  || document.getElementById('pass');
+        if (!emailEl || !passEl) return 'not_found';
+        emailEl.focus(); setVal(emailEl, email);
+        setTimeout(function () {
+          passEl.focus(); setVal(passEl, pw);
+          setTimeout(function () {
+            var btn = document.querySelector('[data-testid="royal_login_button"]') ||
+                      document.querySelector('button[name="login"]') ||
+                      document.querySelector('button[type="submit"]') ||
+                      document.querySelector('input[type="submit"]');
+            if (btn) btn.click();
+          }, 400);
+        }, 150);
+        return 'filled';
+      },
+      args: [uid, pass]
+    }, function (results) {
+      var res = results && results[0] && results[0].result;
+      if (res === 'not_found') {
+        showToast("Login form পাওয়া যায়নি!", "#e53e3e");
+        loading = false; return;
+      }
+      setProgress("Login form fill হয়েছে! ✅", 40);
+      loginBtnText.innerHTML = '⏳ লগইন হচ্ছে...';
+      showToast("Email & Password fill করা হয়েছে!", "#1877F2");
+      setTimeout(function () { startPolling(tabId); }, 2000);
+    });
+  }
+
+  // ── Main login flow ───────────────────────────────────────
+  function runLogin() {
+    if (loading || !uid || !pass) return;
+    if (done) {
+      done = false;
+      successBox.style.display = "none";
+      progressWrap.style.display = "none";
+      loginBtnText.textContent = "Auto Login করুন";
+    }
+    loading = true;
+    stopPoll();
+    setProgress("শুরু হচ্ছে...", 5);
+    loginBtnText.innerHTML = '<div class="spinner"></div> Tab খোঁজা হচ্ছে...';
+
+    chrome.tabs.query({ url: "https://www.facebook.com/*" }, function (fbTabs) {
+      if (fbTabs && fbTabs.length > 0) {
+        loginTabId = fbTabs[0].id;
+        chrome.tabs.update(loginTabId, { active: true });
+        var url = fbTabs[0].url || '';
+        showToast("খোলা Facebook tab পাওয়া গেছে!", "#1877F2");
+        if (url.includes('checkpoint') || url.includes('approvals')) {
+          setProgress("Checkpoint page... auto-click চেষ্টা করছি", 55);
+          loginBtnText.innerHTML = '⏳ CAPTCHA solve করার চেষ্টা...';
+          showToast("CAPTCHA দেখা যাচ্ছে, auto-click চেষ্টা করছি!", "#f59e0b");
+          startPolling(loginTabId);
+        } else if (url.includes('/login') || url.match(/facebook\.com\/?$/)) {
+          setTimeout(function () { injectLoginForm(loginTabId); }, 400);
+        } else {
+          chrome.tabs.update(loginTabId, { url: "https://www.facebook.com/login" }, function () {
+            setProgress("Login page এ যাচ্ছি...", 15);
+            chrome.tabs.onUpdated.addListener(function navL(id, info) {
+              if (id === loginTabId && info.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(navL);
+                setTimeout(function () { injectLoginForm(loginTabId); }, 500);
+              }
+            });
+          });
+        }
+      } else {
+        chrome.tabs.query({ active: true, currentWindow: true }, function (active) {
+          if (!active || !active.length) {
+            loading = false; showToast("Tab পাওয়া যায়নি", "#e53e3e"); return;
+          }
+          loginTabId = active[0].id;
+          chrome.tabs.update(loginTabId, { url: "https://www.facebook.com/login" }, function () {
+            setProgress("Facebook login page খোলা হচ্ছে...", 15);
+            chrome.tabs.onUpdated.addListener(function navL(id, info) {
+              if (id === loginTabId && info.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(navL);
+                setTimeout(function () { injectLoginForm(loginTabId); }, 500);
+              }
+            });
+          });
+        });
+      }
+    });
+  }
+
+  // ── Event listeners ───────────────────────────────────────
+  comboInput.addEventListener("input", function () {
+    done = false; loading = false;
+    successBox.style.display = "none";
+    loginBtnText.textContent = "Auto Login করুন";
+    progressWrap.style.display = "none";
+    stopPoll(); clearTimeout(autoTimer);
+    if (parseLine(comboInput.value.trim())) {
+      autoTimer = setTimeout(function () { runLogin(); }, 300);
+    }
+  });
+
+  loginBtn.addEventListener("click", runLogin);
+  setInterval(updateCountdown, 1000);
+})();
