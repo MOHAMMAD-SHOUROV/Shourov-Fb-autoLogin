@@ -89,20 +89,75 @@ function obfuscateJs(source: string): string {
   }
 }
 
-// ── Add extension files to archiver (popup.js obfuscated) ──────
+// ── Minify JSON (manifest.json) ────────────────────────────────
+function minifyJson(source: string): string {
+  try {
+    return JSON.stringify(JSON.parse(source));
+  } catch {
+    return source;
+  }
+}
+
+// ── Minify HTML (popup.html) ────────────────────────────────────
+function minifyHtml(source: string): string {
+  try {
+    return source
+      // Remove HTML comments
+      .replace(/<!--[\s\S]*?-->/g, "")
+      // Remove whitespace between tags
+      .replace(/>\s+</g, "><")
+      // Collapse multiple spaces/tabs/newlines inside tags to single space
+      .replace(/\s{2,}/g, " ")
+      // Remove leading/trailing whitespace
+      .trim();
+  } catch {
+    return source;
+  }
+}
+
+// ── Minify CSS (popup.css) ──────────────────────────────────────
+function minifyCss(source: string): string {
+  try {
+    return source
+      // Remove /* ... */ comments
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      // Remove newlines and tabs
+      .replace(/[\r\n\t]+/g, " ")
+      // Collapse multiple spaces
+      .replace(/\s{2,}/g, " ")
+      // Remove spaces around punctuation that doesn't need them
+      .replace(/\s*([{}:;,>~+])\s*/g, "$1")
+      // Remove trailing semicolons before }
+      .replace(/;}/g, "}")
+      .trim();
+  } catch {
+    return source;
+  }
+}
+
+// ── Add extension files to archiver — all files protected ──────
 function addExtensionFiles(archive: archiver.Archiver): void {
   const entries = fs.readdirSync(EXT_DIR, { recursive: true }) as string[];
   for (const rel of entries) {
     const full = path.join(EXT_DIR, rel);
     const stat = fs.statSync(full);
     if (!stat.isFile()) continue;
-    // Skip hidden files (e.g. .crx_key.pem accidentally inside)
     if (path.basename(rel).startsWith(".")) continue;
 
-    if (rel === "popup.js" || rel.endsWith(`${path.sep}popup.js`)) {
+    const name = path.basename(rel);
+
+    if (name === "popup.js") {
       const raw = fs.readFileSync(full, "utf8");
-      const obf = obfuscateJs(raw);
-      archive.append(obf, { name: rel });
+      archive.append(obfuscateJs(raw), { name: rel });
+    } else if (name === "manifest.json") {
+      const raw = fs.readFileSync(full, "utf8");
+      archive.append(minifyJson(raw), { name: rel });
+    } else if (name === "popup.html") {
+      const raw = fs.readFileSync(full, "utf8");
+      archive.append(minifyHtml(raw), { name: rel });
+    } else if (name === "popup.css") {
+      const raw = fs.readFileSync(full, "utf8");
+      archive.append(minifyCss(raw), { name: rel });
     } else {
       archive.file(full, { name: rel });
     }
