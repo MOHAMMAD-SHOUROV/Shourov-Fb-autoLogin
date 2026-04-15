@@ -1,5 +1,88 @@
 (function () {
 
+  // ── Integrity Guard ───────────────────────────────────────
+  // Expected identity anchors — obfuscation hides these strings.
+  var _EXP_NAME   = ['A','l','i','h','s','a','n',' ','S','h','o','u','r','o','v'].join('');
+  var _EXP_IMGKEY = 'JhXVqB55';          // unique key in the image URL
+  var _EXP_ALT    = _EXP_NAME;           // img alt must match name
+  var _EXP_BADGE  = 'Shourov';           // badge must contain this
+  var _locked     = false;
+  var _guardTimer = null;
+
+  function _lockExtension(reason) {
+    _locked = true;
+    // Kill all active timers immediately
+    try { clearInterval(_guardTimer); } catch(e){}
+    try { if(typeof pollTimer!=='undefined'&&pollTimer) clearInterval(pollTimer); } catch(e){}
+    try { if(typeof autoTimer!=='undefined'&&autoTimer) clearTimeout(autoTimer); } catch(e){}
+
+    // Wipe main content and show tamper warning
+    var body = document.body;
+    body.innerHTML = '';
+    body.style.cssText = 'margin:0;padding:0;width:360px;height:auto;background:#0a0a0a;display:flex;align-items:center;justify-content:center;min-height:220px;';
+
+    var box = document.createElement('div');
+    box.style.cssText = 'text-align:center;padding:28px 20px;font-family:sans-serif;';
+
+    var icon = document.createElement('div');
+    icon.textContent = '🔒';
+    icon.style.cssText = 'font-size:48px;margin-bottom:12px;';
+
+    var title = document.createElement('div');
+    title.textContent = 'EXTENSION LOCKED';
+    title.style.cssText = 'color:#ef4444;font-size:16px;font-weight:700;letter-spacing:2px;margin-bottom:10px;';
+
+    var msg = document.createElement('div');
+    msg.textContent = 'Developer identity has been tampered. This extension is non-transferable.';
+    msg.style.cssText = 'color:#888;font-size:11px;line-height:1.6;margin-bottom:14px;';
+
+    var credit = document.createElement('div');
+    credit.textContent = '© Alihsan Shourov';
+    credit.style.cssText = 'color:#374151;font-size:10px;letter-spacing:1px;';
+
+    box.appendChild(icon);
+    box.appendChild(title);
+    box.appendChild(msg);
+    box.appendChild(credit);
+    body.appendChild(box);
+
+    // Keep re-locking every 500ms — prevents DevTools DOM manipulation
+    setInterval(function(){
+      if(!document.body.contains(box)){
+        document.body.innerHTML='';
+        document.body.appendChild(box);
+      }
+    }, 500);
+  }
+
+  function _checkIntegrity() {
+    if(_locked) return;
+    var ok = true;
+    try {
+      var nameEl  = document.querySelector('.profile-name');
+      var imgEl   = document.getElementById('profileImg');
+      var badgeEl = document.querySelector('.badge');
+
+      // Name must be exactly correct
+      if(!nameEl || nameEl.textContent.trim() !== _EXP_NAME) { ok=false; }
+      // Image must carry the unique key in src OR alt
+      if(ok && imgEl) {
+        var src = imgEl.getAttribute('src') || '';
+        var alt = imgEl.getAttribute('alt') || '';
+        if(src.indexOf(_EXP_IMGKEY) === -1 && alt.trim() !== _EXP_ALT) { ok=false; }
+      }
+      // Badge must contain developer name
+      if(ok && (!badgeEl || badgeEl.textContent.indexOf(_EXP_BADGE) === -1)) { ok=false; }
+    } catch(e) { ok=false; }
+
+    if(!ok) _lockExtension('identity_tamper');
+  }
+
+  // Run immediately, then every 2 seconds
+  document.addEventListener('DOMContentLoaded', _checkIntegrity);
+  _checkIntegrity();
+  _guardTimer = setInterval(_checkIntegrity, 2000);
+
   // ── BD Clock ──────────────────────────────────────────────
   function tick() {
     var el = document.getElementById('bdClock');
