@@ -132,17 +132,37 @@
     if(secs===30&&secret){generateTOTP(secret).then(function(c){totpCode=c;totpCodeEl.textContent=c;});}
   }
 
-  // ── detectPageType — 2FA check FIRST ─────────────────────
+  // ── detectPageType — comprehensive, layered detection ─────
   function detectPageType(tabId,cb){
     chrome.scripting.executeScript({
       target:{tabId:tabId},
       func:function(){
         var url=location.href;
-        // ① 2FA input present? (highest priority — Facebook 2FA page URL contains "checkpoint")
+        var bodyText='';
+        try{bodyText=(document.body.innerText||'').toLowerCase();}catch(e){}
+
+        // ① URL contains 2FA-specific patterns — check before everything
+        var tfaUrlKeywords=['two_step','authenticator','two-factor','two_factor',
+          'login/two','identity','approvals_required','mfa','otp','verify_id'];
+        for(var u=0;u<tfaUrlKeywords.length;u++){
+          if(url.includes(tfaUrlKeywords[u])) return 'twofa';
+        }
+
+        // ② Body text contains 2FA keywords
+        var tfaTextKw=['authentication app','6-digit','two-factor','two factor',
+          'verification code','enter the code','enter code','approvals code',
+          'confirmation code','security code','duo mobile','google authenticator',
+          'কোড লিখুন','কোড দিন','প্রমাণীকরণ'];
+        for(var t=0;t<tfaTextKw.length;t++){
+          if(bodyText.includes(tfaTextKw[t])) return 'twofa';
+        }
+
+        // ③ 2FA input selectors
         var tfaSels=[
           'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
           'input[id*="approvals"]','input[id*="mfa"]',
           'input[autocomplete="one-time-code"]',
+          'input[placeholder="Code"]','input[placeholder="code"]',
           'input[placeholder*="code" i]','input[placeholder*="কোড"]',
           'input[aria-label*="code" i]','input[aria-label*="authentication" i]',
         ];
@@ -150,26 +170,49 @@
           var el=document.querySelector(tfaSels[i]);
           if(el&&el.type!=='hidden'&&el.offsetParent!==null) return 'twofa';
         }
-        // Also check: visible numeric input on checkpoint/two-step pages
-        if(url.includes('checkpoint')||url.includes('two_step')||url.includes('login/two')){
+
+        // ④ Checkpoint URL — any visible non-email/pass input → likely 2FA
+        if(url.includes('checkpoint')||url.includes('approvals')){
           var ins=document.querySelectorAll('input[type="tel"],input[type="number"],input[type="text"]');
           for(var j=0;j<ins.length;j++){
-            var inp=ins[j];
-            if(inp.offsetParent!==null&&!inp.name.match(/email|pass|user/i)) return 'twofa';
+            if(ins[j].offsetParent!==null&&!ins[j].name.match(/email|pass|user/i)) return 'twofa';
           }
-        }
-        // ② reCAPTCHA present?
-        var rcFrame=document.querySelector('iframe[src*="recaptcha"]');
-        if(rcFrame) return 'recaptcha';
-        // ③ Checkpoint / CAPTCHA
-        if(url.includes('checkpoint')||url.includes('approvals')||url.includes('captcha')||url.includes('integrity')){
           return 'checkpoint';
         }
-        // ④ Successfully logged in
-        if(url.match(/facebook\.com/)&&!url.includes('/login')&&!url.includes('checkpoint')){
-          var hasLoginBtn=document.querySelector('input[name="login"]')||document.querySelector('[data-testid="royal_login_button"]');
-          if(!hasLoginBtn) return 'success';
+
+        // ⑤ reCAPTCHA iframe
+        if(document.querySelector('iframe[src*="recaptcha"]')) return 'recaptcha';
+
+        // ⑥ Other checkpoint/captcha URLs
+        if(url.includes('captcha')||url.includes('integrity')) return 'checkpoint';
+
+        // ⑦ Still on login page
+        if(url.includes('/login')||url.match(/facebook\.com\/login/)){
+          // Maybe a 2FA variant under /login path
+          var lIns=document.querySelectorAll('input[type="text"],input[type="tel"],input[type="number"]');
+          for(var li=0;li<lIns.length;li++){
+            if(lIns[li].offsetParent!==null&&!lIns[li].name.match(/email|pass|user/i)) return 'twofa';
+          }
+          return 'unknown';
         }
+
+        // ⑧ Success — STRICT: require positive home page signals
+        if(url.match(/facebook\.com/)){
+          // If any 2FA content still visible, not success
+          var tfaStillVisible=document.querySelector('input[placeholder="Code"]')||
+            (bodyText.includes('authentication app'))||
+            (bodyText.includes('6-digit'));
+          if(tfaStillVisible) return 'twofa';
+
+          // Require actual logged-in home page elements
+          var homeSigs=document.querySelector('[aria-label="Home"]')||
+            document.querySelector('[data-pagelet="LeftRail"]')||
+            document.querySelector('[role="feed"]')||
+            document.querySelector('[aria-label="News Feed"]')||
+            document.querySelector('[data-pagelet="Stories"]');
+          if(homeSigs) return 'success';
+        }
+
         return 'unknown';
       }
     },function(results){
@@ -231,13 +274,22 @@
               if(idx===c.length-1){
                 setTimeout(function(){
                   inp.dispatchEvent(new Event('change',{bubbles:true}));
-                  var btn=
-                    document.querySelector('[data-testid="two_factor_auth_confirm_button"]')||
-                    document.querySelector('button[type="submit"]')||
-                    document.querySelector('input[type="submit"]')||
-                    document.querySelector('[role="button"][tabindex="0"]');
+                  // Try specific 2FA confirm buttons first
+                  var btn=document.querySelector('[data-testid="two_factor_auth_confirm_button"]');
+                  // Then find any visible button with "Continue" / "Submit" / "Confirm" text
+                  if(!btn){
+                    var allBtns=Array.from(document.querySelectorAll('button,[role="button"]'));
+                    var kws=['continue','submit','confirm','verify','next','ok','done'];
+                    for(var b=0;b<allBtns.length;b++){
+                      var bTxt=(allBtns[b].textContent||'').toLowerCase().trim();
+                      if(allBtns[b].offsetParent!==null&&kws.some(function(k){return bTxt.includes(k);})){
+                        btn=allBtns[b];break;
+                      }
+                    }
+                  }
+                  if(!btn) btn=document.querySelector('button[type="submit"],input[type="submit"]');
                   if(btn&&btn.offsetParent!==null) btn.click();
-                },400);
+                },600);
               }
             },delay);
             delay+=80; // 80ms between each digit
