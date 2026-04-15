@@ -18,6 +18,7 @@
     "cors": "^2",
     "drizzle-orm": "catalog:",
     "express": "^5",
+    "javascript-obfuscator": "^5.4.1",
     "pino": "^9",
     "pino-http": "^10"
   },

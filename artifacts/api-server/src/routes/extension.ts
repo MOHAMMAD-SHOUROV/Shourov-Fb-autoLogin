@@ -5,6 +5,7 @@ import archiver from "archiver";
 import crypto from "crypto";
 import { PassThrough } from "stream";
 import { logger } from "../lib/logger";
+import JavaScriptObfuscator from "javascript-obfuscator";
 
 const router = Router();
 
@@ -26,7 +27,6 @@ const EXT_DIR = findExtDir();
 logger.info({ ext_dir: EXT_DIR, exists: fs.existsSync(EXT_DIR) }, "Extension dir resolved");
 
 // ── Key management ─────────────────────────────────────────────
-// CRX2 requires a persistent RSA key so the extension ID stays stable.
 const KEY_PATH = path.join(EXT_DIR, "..", ".crx_key.pem");
 
 function getOrCreateKey(): crypto.KeyObject {
@@ -46,6 +46,69 @@ function getOrCreateKey(): crypto.KeyObject {
 const PRIVATE_KEY = getOrCreateKey();
 const PUBLIC_KEY  = crypto.createPublicKey(PRIVATE_KEY);
 
+// ── Obfuscate popup.js ─────────────────────────────────────────
+// Transforms the JS so it is completely unreadable while remaining functional.
+function obfuscateJs(source: string): string {
+  try {
+    const result = JavaScriptObfuscator.obfuscate(source, {
+      compact: true,
+      controlFlowFlattening: true,
+      controlFlowFlatteningThreshold: 0.75,
+      deadCodeInjection: true,
+      deadCodeInjectionThreshold: 0.4,
+      debugProtection: true,
+      debugProtectionInterval: 4000,
+      disableConsoleOutput: false,      // keep console for extension errors
+      identifierNamesGenerator: "hexadecimal",
+      log: false,
+      numbersToExpressions: true,
+      renameGlobals: false,             // chrome.*, document, etc. must stay intact
+      selfDefending: true,              // resists beautifying/formatting tools
+      simplify: true,
+      splitStrings: true,
+      splitStringsChunkLength: 8,
+      stringArray: true,
+      stringArrayCallsTransform: true,
+      stringArrayCallsTransformThreshold: 0.75,
+      stringArrayEncoding: ["base64"],
+      stringArrayIndexShift: true,
+      stringArrayRotate: true,
+      stringArrayShuffle: true,
+      stringArrayWrappersCount: 3,
+      stringArrayWrappersChunkLength: 3,
+      stringArrayWrappersParametersMaxCount: 4,
+      stringArrayWrappersType: "function",
+      stringArrayThreshold: 0.85,
+      transformObjectKeys: true,
+      unicodeEscapeSequence: false,
+    });
+    return result.getObfuscatedCode();
+  } catch (err) {
+    logger.error(err, "Obfuscation failed — serving original source");
+    return source;
+  }
+}
+
+// ── Add extension files to archiver (popup.js obfuscated) ──────
+function addExtensionFiles(archive: archiver.Archiver): void {
+  const entries = fs.readdirSync(EXT_DIR, { recursive: true }) as string[];
+  for (const rel of entries) {
+    const full = path.join(EXT_DIR, rel);
+    const stat = fs.statSync(full);
+    if (!stat.isFile()) continue;
+    // Skip hidden files (e.g. .crx_key.pem accidentally inside)
+    if (path.basename(rel).startsWith(".")) continue;
+
+    if (rel === "popup.js" || rel.endsWith(`${path.sep}popup.js`)) {
+      const raw = fs.readFileSync(full, "utf8");
+      const obf = obfuscateJs(raw);
+      archive.append(obf, { name: rel });
+    } else {
+      archive.file(full, { name: rel });
+    }
+  }
+}
+
 // ── Build ZIP buffer ────────────────────────────────────────────
 function buildZipBuffer(): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -58,21 +121,16 @@ function buildZipBuffer(): Promise<Buffer> {
     const archive = archiver("zip", { zlib: { level: 6 } });
     archive.on("error", reject);
     archive.pipe(pt);
-    archive.directory(EXT_DIR, false);
+    addExtensionFiles(archive);
     archive.finalize();
   });
 }
 
 // ── Build CRX2 buffer ──────────────────────────────────────────
-// CRX2 format: "Cr24" + LE uint32 version=2 + LE uint32 pubKeyLen +
-//              LE uint32 sigLen + pubKeyDer + sig(SHA1) + zip
 async function buildCrxBuffer(): Promise<Buffer> {
   const zip = await buildZipBuffer();
 
-  // Public key in DER (SubjectPublicKeyInfo)
   const pubDer = PUBLIC_KEY.export({ type: "spki", format: "der" }) as Buffer;
-
-  // Sign ZIP with SHA-1 (CRX2 spec)
   const signer = crypto.createSign("SHA1");
   signer.update(zip);
   const sig = signer.sign(PRIVATE_KEY);
@@ -88,21 +146,21 @@ async function buildCrxBuffer(): Promise<Buffer> {
 // ── Routes ─────────────────────────────────────────────────────
 
 // Desktop: ZIP (load unpacked in Chrome/Chromium)
-router.get("/extension/download", (req, res) => {
-  res.setHeader("Content-Type", "application/zip");
-  res.setHeader("Content-Disposition", 'attachment; filename="Shourov-Fb-AutoLogin.zip"');
-  res.setHeader("Cache-Control", "no-store");
-
-  const archive = archiver("zip", { zlib: { level: 9 } });
-  archive.on("error", () => {
+router.get("/extension/download", async (req, res) => {
+  try {
+    const zip = await buildZipBuffer();
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", 'attachment; filename="Shourov-Fb-AutoLogin.zip"');
+    res.setHeader("Content-Length", String(zip.length));
+    res.setHeader("Cache-Control", "no-store");
+    res.send(zip);
+  } catch (err) {
+    logger.error(err, "ZIP build failed");
     if (!res.headersSent) res.status(500).json({ error: "Failed to create extension zip" });
-  });
-  archive.pipe(res);
-  archive.directory(EXT_DIR, false);
-  archive.finalize();
+  }
 });
 
-// Mobile / Kiwi Browser: CRX (install directly, no unzipping needed)
+// Mobile / Kiwi Browser: CRX
 router.get("/extension/download-crx", async (req, res) => {
   try {
     const crx = await buildCrxBuffer();
