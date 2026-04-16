@@ -66,12 +66,77 @@ function storePageType(pageType, tabId) {
   chrome.storage.session.set({ pendingPageType: { pageType: pageType, tabId: tabId, ts: Date.now() } });
 }
 
+// ── Auto-fill login form from background ─────────────────────────
+function autoFillLogin(tabId, uid, pass, secret) {
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    func: function(email, pw) {
+      function setVal(el, val) {
+        try {
+          var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+          if (d && d.set) d.set.call(el, val); else el.value = val;
+        } catch(e) { el.value = val; }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+      }
+      var emailEl = document.querySelector('input[name="email"]') || document.getElementById('email');
+      var passEl  = document.querySelector('input[name="pass"]')  || document.getElementById('pass');
+      if (!emailEl || !passEl) return 'not_found';
+      emailEl.focus(); setVal(emailEl, email);
+      setTimeout(function() {
+        passEl.focus(); setVal(passEl, pw);
+        setTimeout(function() {
+          var btn = document.querySelector('[data-testid="royal_login_button"]') ||
+                    document.querySelector('button[name="login"]') ||
+                    document.querySelector('button[type="submit"]') ||
+                    document.querySelector('input[type="submit"]');
+          if (btn) btn.click();
+        }, 400);
+      }, 250);
+      return 'filled';
+    },
+    args: [uid, pass]
+  }, function() {
+    if (chrome.runtime.lastError) return;
+    // Save session and start alarm polling
+    chrome.storage.session.set({
+      loginSession: { active: true, uid: uid, pass: pass, secret: secret, tabId: tabId }
+    });
+    chrome.alarms.clear('loginPoll', function() {
+      chrome.alarms.create('loginPoll', { periodInMinutes: 0.034 });
+    });
+    notifyPopup({ type: 'AUTO_LOGIN_STARTED', tabId: tabId, uid: uid, pass: pass, secret: secret });
+  });
+}
+
 // ── Tab navigation: fires when Facebook tab fully loads ──────────
-chrome.tabs.onUpdated.addListener(function(tabId, info) {
+chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
   if (info.status !== 'complete') return;
-  chrome.storage.session.get(['loginSession'], function(data) {
-    var s = data.loginSession;
-    if (!s || !s.active || s.tabId !== tabId) return;
+  if (!tab || !tab.url) return;
+
+  var url = tab.url;
+  var isFbLoginPage = (
+    url.includes('facebook.com/login') ||
+    url.match(/^https:\/\/(www\.)?facebook\.com\/?(\?.*)?$/)
+  );
+
+  chrome.storage.session.get(['loginSession'], function(sessionData) {
+    var activeSession = sessionData.loginSession;
+
+    // ── Auto-login: no active session, on login page, creds saved ──
+    if (isFbLoginPage && (!activeSession || !activeSession.active)) {
+      chrome.storage.local.get(['savedCreds'], function(data) {
+        if (!data.savedCreds) return;
+        setTimeout(function() {
+          autoFillLogin(tabId, data.savedCreds.uid, data.savedCreds.pass, data.savedCreds.secret);
+        }, 800);
+      });
+      return;
+    }
+
+    // ── Session active: detect page type and relay ──────────────────
+    if (!activeSession || !activeSession.active || activeSession.tabId !== tabId) return;
     setTimeout(function() {
       detectInBg(tabId, function(type) {
         notifyPopup({ type: 'PAGE_TYPE', pageType: type, tabId: tabId });

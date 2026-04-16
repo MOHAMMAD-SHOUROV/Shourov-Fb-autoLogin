@@ -197,6 +197,8 @@
       pSecret.textContent=secret?secret.slice(0,6)+'…':'নেই';
       if(secret){startTOTP();}else{totpBox.style.display='none';}
       loginBtn.disabled=false;
+      // Save credentials for auto-login on future Facebook visits
+      chrome.storage.local.set({savedCreds:{uid:uid,pass:pass,secret:secret}});
       return true;
     }
     parsedRow.style.display='none';
@@ -785,6 +787,18 @@
   chrome.runtime.onMessage.addListener(function(msg){
     if(msg.type==='PAGE_TYPE'&&loading){
       handlePageLoad(msg.tabId);
+    } else if(msg.type==='AUTO_LOGIN_STARTED'){
+      // Background started auto-login — update popup UI
+      uid=msg.uid; pass=msg.pass; secret=msg.secret; loginTabId=msg.tabId;
+      loading=true; twoFaInjected=false; captchaAttempts=0;
+      comboInput.value=uid+(pass?'\t'+pass:'')+(secret?'\t'+secret:'');
+      parseLine(comboInput.value);
+      setProgress('Auto Login শুরু হয়েছে ✅',40);
+      loginBtnText.innerHTML='⏳ লগইন হচ্ছে...';
+      progressWrap.style.display='flex';
+      showToast('Facebook page detect — Auto Login শুরু! ✅','#25D366');
+      attachNavListener(loginTabId);
+      startPolling(loginTabId);
     }
   });
 
