@@ -396,7 +396,7 @@
   }
 
   // ── reCAPTCHA auto-solver (audio challenge + Wit.ai STT) ──
-  var witApiToken='';
+  var witApiToken='GL2W4NT43VAZZETEKR7JAEJIPRDHW42J';
 
   function solveRecaptcha(tabId){
     setProgress('reCAPTCHA সমাধান করছি...', 62);
