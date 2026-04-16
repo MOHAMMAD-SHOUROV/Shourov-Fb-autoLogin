@@ -178,16 +178,26 @@
   function parseLine(line){
     var trimmed=line.trim(); if(!trimmed) return false;
     var parts;
-    if(trimmed.indexOf('\t')!==-1){
-      parts=trimmed.split(/\t+/).map(function(p){return p.trim();}).filter(Boolean);
+    // ① Pipe separator: uid|pass|2fa  (most common combo format)
+    if(trimmed.indexOf('|')!==-1){
+      parts=trimmed.split('|').map(function(p){return p.trim();}).filter(Boolean);
     }
+    // ② Tab separator
     if(!parts||parts.length<2){
-      parts=trimmed.split(/[ \t]{2,}/).map(function(p){return p.trim();}).filter(Boolean);
+      if(trimmed.indexOf('\t')!==-1){
+        parts=trimmed.split(/\t+/).map(function(p){return p.trim();}).filter(Boolean);
+      }
     }
+    // ③ Double/multiple spaces
     if(!parts||parts.length<2){
       parts=trimmed.split(/\s{2,}/).map(function(p){return p.trim();}).filter(Boolean);
     }
-    if(parts.length>=2&&parts[0]&&parts[1]){
+    // ④ Single space (3 tokens only — uid pass 2fa)
+    if(!parts||parts.length<2){
+      var sp=trimmed.split(' ').map(function(p){return p.trim();}).filter(Boolean);
+      if(sp.length>=2&&sp.length<=4) parts=sp;
+    }
+    if(parts&&parts.length>=2&&parts[0]&&parts[1]){
       uid=parts[0].replace(/\s/g,'');
       pass=parts[1].trim();
       secret=parts.length>=3?parts.slice(2).join('').replace(/\s/g,''):'';

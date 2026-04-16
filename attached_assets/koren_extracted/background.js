@@ -130,7 +130,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
         if (!data.savedCreds) return;
         setTimeout(function() {
           autoFillLogin(tabId, data.savedCreds.uid, data.savedCreds.pass, data.savedCreds.secret);
-        }, 800);
+        }, 400);
       });
       return;
     }
