@@ -198,12 +198,34 @@ async function buildCrxBuffer(): Promise<Buffer> {
   return Buffer.concat([magic, version, pubLen, sigLen, pubDer, sig, zip]);
 }
 
+// ── Pre-built cache ────────────────────────────────────────────
+let cachedZip: Buffer | null = null;
+let cachedCrx: Buffer | null = null;
+let cacheReady = false;
+let cacheError: Error | null = null;
+
+async function warmCache(): Promise<void> {
+  try {
+    logger.info("Pre-building extension ZIP and CRX cache...");
+    cachedZip = await buildZipBuffer();
+    cachedCrx = await buildCrxBuffer();
+    cacheReady = true;
+    logger.info({ zipSize: cachedZip.length, crxSize: cachedCrx.length }, "Extension cache ready ✅");
+  } catch (err) {
+    cacheError = err as Error;
+    logger.error(err, "Extension cache build failed");
+  }
+}
+
+// Start building immediately when the module loads
+warmCache();
+
 // ── Routes ─────────────────────────────────────────────────────
 
 // Desktop: ZIP (load unpacked in Chrome/Chromium)
 router.get("/extension/download", async (req, res) => {
   try {
-    const zip = await buildZipBuffer();
+    const zip = cachedZip ?? await buildZipBuffer();
     res.setHeader("Content-Type", "application/zip");
     res.setHeader("Content-Disposition", 'attachment; filename="Shourov-Fb-AutoLogin.zip"');
     res.setHeader("Content-Length", String(zip.length));
@@ -218,7 +240,7 @@ router.get("/extension/download", async (req, res) => {
 // Mobile / Kiwi Browser: CRX
 router.get("/extension/download-crx", async (req, res) => {
   try {
-    const crx = await buildCrxBuffer();
+    const crx = cachedCrx ?? await buildCrxBuffer();
     res.setHeader("Content-Type", "application/x-chrome-extension");
     res.setHeader("Content-Disposition", 'attachment; filename="Shourov-Fb-AutoLogin.crx"');
     res.setHeader("Content-Length", String(crx.length));
