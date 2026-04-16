@@ -263,8 +263,16 @@
           return 'checkpoint';
         }
 
-        // ⑤ reCAPTCHA iframe
-        if(document.querySelector('iframe[src*="recaptcha"]')) return 'recaptcha';
+        // ⑤ reCAPTCHA iframe — multiple detection strategies
+        if(
+          document.querySelector('iframe[src*="recaptcha"]') ||
+          document.querySelector('iframe[title*="reCAPTCHA"]') ||
+          document.querySelector('iframe[title*="recaptcha"]') ||
+          document.querySelector('.g-recaptcha') ||
+          document.querySelector('[data-sitekey]') ||
+          document.querySelector('iframe[src*="google.com/recaptcha"]') ||
+          document.querySelector('div.recaptcha-checkbox-border')
+        ) return 'recaptcha';
 
         // ⑥ Other checkpoint/captcha URLs
         if(url.includes('captcha')||url.includes('integrity')) return 'checkpoint';
@@ -387,7 +395,9 @@
     });
   }
 
-  // ── reCAPTCHA auto-solver (audio challenge + STT) ─────────
+  // ── reCAPTCHA auto-solver (audio challenge + Wit.ai STT) ──
+  var witApiToken='';
+
   function solveRecaptcha(tabId){
     setProgress('reCAPTCHA সমাধান করছি...', 62);
     loginBtnText.innerHTML='⏳ reCAPTCHA চেষ্টা করছি...';
@@ -397,8 +407,18 @@
     chrome.scripting.executeScript({
       target:{tabId:tabId,allFrames:true},
       func:function(){
-        var cb=document.querySelector('#recaptcha-anchor,.recaptcha-checkbox-border,.recaptcha-checkbox');
-        if(cb&&cb.offsetParent!==null){cb.click();return 'clicked';}
+        var sels=[
+          '#recaptcha-anchor',
+          '.recaptcha-checkbox-border',
+          '.recaptcha-checkbox',
+          'span[id="recaptcha-anchor"]',
+          '[role="checkbox"][aria-label*="robot" i]',
+          '[role="checkbox"][aria-label*="human" i]'
+        ];
+        for(var i=0;i<sels.length;i++){
+          var cb=document.querySelector(sels[i]);
+          if(cb&&cb.offsetParent!==null){cb.click();return 'clicked';}
+        }
         return null;
       }
     },function(res1){
@@ -407,8 +427,20 @@
         chrome.scripting.executeScript({
           target:{tabId:tabId,allFrames:true},
           func:function(){
-            var audioBtn=document.querySelector('#recaptcha-audio-button,button[aria-labelledby*="audio-instructions"],button.rc-button-audio');
-            if(audioBtn&&audioBtn.offsetParent!==null){audioBtn.click();return 'audio_clicked';}
+            var sels=[
+              '#recaptcha-audio-button',
+              'button[aria-labelledby="audio-instructions"]',
+              'button[aria-labelledby*="audio"]',
+              'button.rc-button-audio',
+              'button[id*="audio"]',
+              'button.rc-audiochallenge-play-button',
+              '[title*="audio" i]',
+              'button[title*="audio" i]'
+            ];
+            for(var i=0;i<sels.length;i++){
+              var btn=document.querySelector(sels[i]);
+              if(btn&&btn.offsetParent!==null){btn.click();return 'audio_clicked';}
+            }
             return null;
           }
         },function(res2){
@@ -417,10 +449,18 @@
             chrome.scripting.executeScript({
               target:{tabId:tabId,allFrames:true},
               func:function(){
-                var src=document.querySelector('#audio-source,audio source,audio');
-                if(src){
-                  var url=src.src||src.getAttribute('src')||null;
-                  if(url) return url;
+                // Try multiple selectors for the audio element
+                var candidates=[
+                  document.querySelector('#audio-source'),
+                  document.querySelector('audio[id*="audio"]'),
+                  document.querySelector('.rc-audiochallenge-audio source'),
+                  document.querySelector('audio source'),
+                  document.querySelector('audio')
+                ];
+                for(var i=0;i<candidates.length;i++){
+                  if(!candidates[i]) continue;
+                  var url=candidates[i].src||candidates[i].getAttribute('src')||null;
+                  if(url&&url.indexOf('http')===0) return url;
                 }
                 return null;
               }
@@ -432,64 +472,78 @@
                 captchaAttempts=0;
                 return;
               }
-              // Step 4: Download audio and transcribe via Google Speech API v2
+
+              if(!witApiToken){
+                showToast('Wit.ai token নেই! ⚙️ Settings এ token দিন','#e53e3e');
+                captchaAttempts=0;
+                // Open settings panel
+                var body=document.getElementById('witBody');
+                if(body) body.style.display='block';
+                return;
+              }
+
+              // Step 4: Download audio and transcribe via Wit.ai
               setProgress('Audio ডাউনলোড করছি...', 68);
               fetch(audioUrl)
                 .then(function(r){return r.arrayBuffer();})
                 .then(function(ab){
                   setProgress('Speech-to-Text চলছে...', 74);
-                  return fetch(
-                    'https://www.google.com/speech-api/v2/recognize?output=json&lang=en-us&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgY',
-                    {method:'POST',headers:{'Content-Type':'audio/mp3; rate=8000'},body:ab}
-                  );
+                  return fetch('https://api.wit.ai/speech?v=20220622',{
+                    method:'POST',
+                    headers:{
+                      'Authorization':'Bearer '+witApiToken,
+                      'Content-Type':'audio/mpeg'
+                    },
+                    body:ab
+                  });
                 })
-                .then(function(r){return r.text();})
-                .then(function(txt){
-                  // Google Speech API v2 returns two lines; parse second JSON line
-                  var lines=txt.trim().split('\n');
-                  var transcript='';
-                  for(var i=0;i<lines.length;i++){
-                    try{
-                      var obj=JSON.parse(lines[i]);
-                      if(obj.result&&obj.result[0]&&obj.result[0].alternative){
-                        transcript=obj.result[0].alternative[0].transcript;
-                        break;
-                      }
-                    }catch(e){}
-                  }
-                  if(!transcript){showToast('Audio transcribe হয়নি','#e53e3e');return;}
+                .then(function(r){return r.json();})
+                .then(function(data){
+                  var transcript=(data&&data.text)||'';
+                  if(!transcript){showToast('Audio transcribe হয়নি — আবার চেষ্টা করছি','#f59e0b');captchaAttempts=0;return;}
                   var answer=transcript.trim().toLowerCase().replace(/[^a-z0-9\s]/g,'');
                   showToast('reCAPTCHA উত্তর: "'+answer+'"','#25D366');
-                  // Step 5: Enter answer in the reCAPTCHA input and submit
+                  // Step 5: Enter answer and submit
                   chrome.scripting.executeScript({
                     target:{tabId:tabId,allFrames:true},
                     func:function(ans){
-                      var inp=document.querySelector('#audio-response,input[aria-label*="answer" i],input[id*="response"]');
+                      var inp=document.querySelector(
+                        '#audio-response,'+
+                        '.rc-audiochallenge-response-field input,'+
+                        'input[aria-label*="answer" i],'+
+                        'input[id*="audio-response"],'+
+                        'input[id*="response"]'
+                      );
                       if(inp){
+                        inp.focus();
                         inp.value=ans;
                         inp.dispatchEvent(new Event('input',{bubbles:true}));
                         inp.dispatchEvent(new Event('change',{bubbles:true}));
-                        var verifyBtn=document.querySelector('#recaptcha-verify-button,button[type="submit"]');
+                        var verifyBtn=document.querySelector(
+                          '#recaptcha-verify-button,'+
+                          'button[id*="verify"],'+
+                          'button[type="submit"]'
+                        );
                         if(verifyBtn) verifyBtn.click();
                         return 'submitted';
                       }
                       return null;
                     },
                     args:[answer]
-                  },function(res5){
+                  },function(){
                     setProgress('reCAPTCHA জমা দেওয়া হয়েছে ✅',78);
                     showToast('reCAPTCHA সমাধান হয়েছে ✅','#25D366');
                     captchaAttempts=0;
                   });
                 })
-                .catch(function(){
+                .catch(function(err){
                   showToast('reCAPTCHA transcribe error — manual করুন','#e53e3e');
                   captchaAttempts=0;
                 });
             });
-          },1500);
+          },1800);
         });
-      },1200);
+      },1400);
     });
   }
 
@@ -717,5 +771,39 @@
 
   loginBtn.addEventListener('click',runLogin);
   setInterval(updateCountdown,1000);
+
+  // ── Wit.ai Settings ───────────────────────────────────────
+  var witToggle=document.getElementById('witToggle');
+  var witBody=document.getElementById('witBody');
+  var witArrow=document.getElementById('witArrow');
+  var witTokenInput=document.getElementById('witTokenInput');
+  var witSaveBtn=document.getElementById('witSaveBtn');
+
+  // Load saved token
+  chrome.storage.local.get(['witToken'],function(data){
+    if(data&&data.witToken){
+      witApiToken=data.witToken;
+      if(witTokenInput) witTokenInput.value=data.witToken;
+    }
+  });
+
+  if(witToggle){
+    witToggle.addEventListener('click',function(){
+      var open=witBody.style.display==='block';
+      witBody.style.display=open?'none':'block';
+      witArrow.textContent=open?'▼':'▲';
+    });
+  }
+
+  if(witSaveBtn){
+    witSaveBtn.addEventListener('click',function(){
+      var token=(witTokenInput.value||'').trim();
+      witApiToken=token;
+      chrome.storage.local.set({witToken:token},function(){
+        witSaveBtn.textContent='✅ সংরক্ষিত!';
+        setTimeout(function(){witSaveBtn.textContent='সংরক্ষণ করুন';},2000);
+      });
+    });
+  }
 
 })();
