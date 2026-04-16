@@ -166,7 +166,10 @@
     stagePct.textContent=pct+'%';
     progressFill.style.width=pct+'%';
   }
-  function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
+  function stopPoll(){
+    if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+    chrome.runtime.sendMessage({type:'STOP_POLL'}).catch(function(){});
+  }
   function removeNavListener(){
     if(navListener){chrome.tabs.onUpdated.removeListener(navListener);navListener=null;}
   }
@@ -613,6 +616,7 @@
         });
       }else if(type==='success'){
         stopPoll(); removeNavListener();
+        chrome.storage.session.remove(['loginSession','pendingPageType']);
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';
@@ -693,9 +697,13 @@
       setProgress('Email & Password দেওয়া হয়েছে ✅',40);
       loginBtnText.innerHTML='⏳ লগইন হচ্ছে...';
       showToast('Email & Password দেওয়া হয়েছে ✅','#1877F2');
+      // Save session so background can resume if popup closes
+      chrome.storage.session.set({loginSession:{active:true,uid:uid,pass:pass,secret:secret,tabId:tabId}});
       // Both nav listener + polling for reliability
       attachNavListener(tabId);
       setTimeout(function(){startPolling(tabId);},3000);
+      // Tell background service worker to start alarm-based polling
+      chrome.runtime.sendMessage({type:'START_POLL'}).catch(function(){});
     });
   }
 
@@ -708,6 +716,7 @@
       loginBtnText.textContent='Auto Login করুন';
     }
     loading=true; twoFaInjected=false; captchaAttempts=0;
+    chrome.storage.session.remove(['loginSession','pendingPageType']);
     stopPoll(); removeNavListener();
     setProgress('শুরু হচ্ছে...',5);
     loginBtnText.innerHTML='⏳ Tab খোঁজা হচ্ছে...';
@@ -771,6 +780,36 @@
 
   loginBtn.addEventListener('click',runLogin);
   setInterval(updateCountdown,1000);
+
+  // ── Background message listener ───────────────────────────
+  chrome.runtime.onMessage.addListener(function(msg){
+    if(msg.type==='PAGE_TYPE'&&loading){
+      handlePageLoad(msg.tabId);
+    }
+  });
+
+  // ── Restore session if popup was closed mid-login ──────────
+  chrome.storage.session.get(['loginSession','pendingPageType'],function(data){
+    var s=data.loginSession;
+    if(s&&s.active){
+      uid=s.uid; pass=s.pass; secret=s.secret; loginTabId=s.tabId;
+      loading=true; twoFaInjected=false;
+      comboInput.value=uid+(pass?'\t'+pass:'')+(secret?'\t'+secret:'');
+      parseLine(comboInput.value);
+      setProgress('লগইন চলছে — পুনরায় সংযোগ হচ্ছে...',45);
+      loginBtnText.innerHTML='⏳ লগইন হচ্ছে...';
+      progressWrap.style.display='flex';
+      showToast('লগইন চলছিল — আবার সংযুক্ত হচ্ছি...','#f59e0b');
+      attachNavListener(loginTabId);
+      startPolling(loginTabId);
+      // Handle pending page type from background
+      var p=data.pendingPageType;
+      if(p&&(Date.now()-p.ts)<30000){
+        chrome.storage.session.remove('pendingPageType');
+        setTimeout(function(){handlePageLoad(p.tabId);},500);
+      }
+    }
+  });
 
   // ── Wit.ai Settings ───────────────────────────────────────
   var witToggle=document.getElementById('witToggle');
