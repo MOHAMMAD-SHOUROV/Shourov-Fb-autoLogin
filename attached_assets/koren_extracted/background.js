@@ -397,8 +397,89 @@ function handlePageState(tabId, session) {
         });
       });
 
+    } else if(type === 'recaptcha') {
+      var captchaAttempts = session.captchaAttempts || 0;
+      if(captchaAttempts >= 2) {
+        // Gave up — notify popup, keep polling in case it resolves
+        notifyPopup({ type: 'STATUS', msg: 'captcha_manual' });
+        return;
+      }
+      chrome.storage.session.set({ loginSession: Object.assign({}, session, { captchaAttempts: captchaAttempts + 1 }) });
+      notifyPopup({ type: 'STATUS', msg: 'recaptcha' });
+      // Step 1: Click "I'm not a robot" checkbox
+      chrome.scripting.executeScript({
+        target: { tabId: tabId, allFrames: true },
+        func: function(){
+          var cb = document.querySelector('#recaptcha-anchor,.recaptcha-checkbox-border,.recaptcha-checkbox,[aria-label*="not a robot" i]');
+          if(cb && cb.offsetParent !== null){ cb.click(); return 'clicked'; }
+          return null;
+        }
+      }, function(){
+        // Step 2: Wait then try audio challenge button
+        setTimeout(function(){
+          chrome.scripting.executeScript({
+            target: { tabId: tabId, allFrames: true },
+            func: function(){
+              var audioBtn = document.querySelector('#recaptcha-audio-button,button[aria-labelledby*="audio" i],button.rc-button-audio');
+              if(audioBtn && audioBtn.offsetParent !== null){ audioBtn.click(); return 'audio'; }
+              return null;
+            }
+          }, function(){
+            // Step 3: Get audio URL and transcribe
+            setTimeout(function(){
+              chrome.scripting.executeScript({
+                target: { tabId: tabId, allFrames: true },
+                func: function(){
+                  var src = document.querySelector('#audio-source,audio source,audio');
+                  if(src){ return src.src || src.getAttribute('src') || null; }
+                  return null;
+                }
+              }, function(res){
+                var audioUrl = null;
+                if(res){ for(var i=0;i<res.length;i++){ if(res[i]&&res[i].result){ audioUrl=res[i].result; break; } } }
+                if(!audioUrl) return;
+                fetch(audioUrl)
+                  .then(function(r){ return r.arrayBuffer(); })
+                  .then(function(ab){
+                    return fetch(
+                      'https://www.google.com/speech-api/v2/recognize?output=json&lang=en-us&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgY',
+                      { method:'POST', headers:{'Content-Type':'audio/mp3; rate=8000'}, body: ab }
+                    );
+                  })
+                  .then(function(r){ return r.text(); })
+                  .then(function(txt){
+                    var lines = txt.trim().split('\n'), transcript = '';
+                    for(var i=0;i<lines.length;i++){
+                      try{ var obj=JSON.parse(lines[i]); if(obj.result&&obj.result[0]){ transcript=obj.result[0].alternative[0].transcript; break; } }catch(e){}
+                    }
+                    if(!transcript) return;
+                    var answer = transcript.trim().toLowerCase().replace(/[^a-z0-9\s]/g,'');
+                    chrome.scripting.executeScript({
+                      target: { tabId: tabId, allFrames: true },
+                      func: function(ans){
+                        var inp = document.querySelector('#audio-response,input[aria-label*="answer" i]');
+                        if(inp){
+                          inp.value = ans;
+                          inp.dispatchEvent(new Event('input',{bubbles:true}));
+                          inp.dispatchEvent(new Event('change',{bubbles:true}));
+                          var btn = document.querySelector('#recaptcha-verify-button,button[type="submit"]');
+                          if(btn) btn.click();
+                        }
+                      },
+                      args: [answer]
+                    }, function(){});
+                  })
+                  .catch(function(){});
+              });
+            }, 1500);
+          });
+        }, 1200);
+      });
+
     } else if(type === 'checkpoint') {
       // Click any continue/approve button
+      // Reset captchaAttempts if we moved past captcha
+      chrome.storage.session.set({ loginSession: Object.assign({}, session, { captchaAttempts: 0 }) });
       chrome.scripting.executeScript({
         target: { tabId: tabId },
         func: function(){

@@ -722,6 +722,50 @@
     });
   }
 
+  // ── Restore state when popup is reopened ─────────────────
+  (function restoreState(){
+    // Restore saved credentials into the input field
+    chrome.storage.local.get(['savedCreds'], function(d){
+      if(!d.savedCreds) return;
+      var creds = d.savedCreds;
+      // Rebuild combo line: uid  pass  secret
+      var line = creds.uid + '\t' + creds.pass + (creds.secret ? '\t' + creds.secret : '');
+      comboInput.value = line;
+      parseLine(line);
+
+      // Now check if there's an active login session
+      chrome.storage.session.get(['loginSession'], function(s){
+        var session = s.loginSession;
+        if(!session || !session.active) return;
+        loginTabId = session.tabId;
+        loading = true;
+
+        // Show resumed state in UI
+        setProgress('Background এ চলছে... (resumed)', 30);
+        loginBtnText.innerHTML = '⏳ Background এ login চলছে...';
+        showToast('Background এ login চলছে — popup খোলা থাকলে update দেখবেন', '#1877F2');
+
+        // Light polling so popup updates if background finishes
+        stopPoll(); pollAttempts = 0;
+        pollTimer = setInterval(function(){
+          pollAttempts++;
+          if(pollAttempts > 120){ stopPoll(); return; }
+          chrome.storage.session.get(['loginSession'], function(sd){
+            if(!sd.loginSession || !sd.loginSession.active){
+              stopPoll();
+              // Session ended — check if success
+              setProgress('লগইন সম্পন্ন হয়েছে ✅', 100);
+              loginBtnText.innerHTML = '✅ লগইন সম্পন্ন!';
+              usedCodeEl.textContent = 'Login Success ✅';
+              successBox.style.display = 'block';
+              loading = false; done = true;
+            }
+          });
+        }, 2000);
+      });
+    });
+  })();
+
   // ── Event listeners ───────────────────────────────────────
   comboInput.addEventListener('input',function(){
     done=false;loading=false;twoFaInjected=false;captchaAttempts=0;
@@ -763,6 +807,15 @@
         successBox.style.display='block';
         showToast('Background লগইন সফল! ✅','#25D366');
         loading=false; done=true;
+      }else if(m==='recaptcha'){
+        setProgress('reCAPTCHA পাওয়া গেছে — audio চেষ্টা করছি...',62);
+        loginBtnText.innerHTML='⏳ reCAPTCHA সমাধান করছি...';
+        showToast('reCAPTCHA — background audio challenge চেষ্টা করছে ⏳','#f59e0b');
+      }else if(m==='captcha_manual'){
+        setProgress('reCAPTCHA — manually সমাধান করুন',62);
+        loginBtnText.innerHTML='⚠️ reCAPTCHA manual করুন';
+        showToast('Image CAPTCHA এসেছে — manually সমাধান করুন, তারপর login চলবে','#e53e3e');
+        loading=false;
       }else if(m==='need_secret'){
         setProgress('2FA দরকার! Secret দিন',70);
         showToast('2FA চাওয়া হচ্ছে — Secret key দিয়ে আবার দিন','#f59e0b');
