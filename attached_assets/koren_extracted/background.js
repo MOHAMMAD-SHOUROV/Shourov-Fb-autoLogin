@@ -437,21 +437,29 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
   if(!tab || !tab.url || !tab.url.includes('facebook.com')) return;
 
   var url = tab.url;
-  var isFbLoginPage = (
-    url.includes('facebook.com/login') ||
-    url.match(/^https:\/\/(www\.)?facebook\.com\/?(\?.*)?$/)
-  );
+  var isLoginPage = url.includes('facebook.com/login');
+  var isHomepage  = !!url.match(/^https:\/\/(www\.)?facebook\.com\/?(\?.*)?$/);
 
   chrome.storage.session.get(['loginSession'], function(data) {
     var session = data.loginSession;
 
     // Auto-login: no active session, on login page, creds saved
-    if(isFbLoginPage && (!session || !session.active)){
+    if(isLoginPage && (!session || !session.active)){
       chrome.storage.local.get(['savedCreds'], function(d){
         if(!d.savedCreds) return;
         setTimeout(function(){
           autoFillLogin(tabId, d.savedCreds.uid, d.savedCreds.pass, d.savedCreds.secret || '');
-        }, 600);
+        }, 800);
+      });
+      return;
+    }
+
+    // If on homepage and no active session, redirect to /login so auto-login can trigger
+    if(isHomepage && (!session || !session.active)){
+      chrome.storage.local.get(['savedCreds'], function(d){
+        if(!d.savedCreds) return;
+        // Navigate to /login page which will then trigger auto-fill above
+        chrome.tabs.update(tabId, { url: 'https://www.facebook.com/login' });
       });
       return;
     }

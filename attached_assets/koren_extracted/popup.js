@@ -111,6 +111,8 @@
       pSecret.textContent=secret?secret.slice(0,6)+'…':'নেই';
       if(secret){startTOTP();}else{totpBox.style.display='none';}
       loginBtn.disabled=false;
+      // Save credentials so background can auto-login even when popup is closed
+      chrome.storage.local.set({ savedCreds: { uid: uid, pass: pass, secret: secret } });
       return true;
     }
     parsedRow.style.display='none';
@@ -684,15 +686,18 @@
           attachNavListener(loginTabId);
           startPolling(loginTabId);
           handlePageLoad(loginTabId);
-        }else if(url.includes('/login')||url.match(/facebook\.com\/?$/)||url==='https://www.facebook.com/'){
+        }else if(url.includes('/login')){
+          // Already on login page — fill directly
           setTimeout(function(){injectLoginForm(loginTabId);},400);
         }else{
+          // Homepage or any other FB page — always navigate to /login for reliability
+          setProgress('Login page এ যাচ্ছি...',15);
+          loginBtnText.innerHTML='⏳ Login page এ যাচ্ছি...';
           chrome.tabs.update(loginTabId,{url:'https://www.facebook.com/login'},function(){
-            setProgress('Login page এ যাচ্ছি...',15);
             chrome.tabs.onUpdated.addListener(function navL(id,info){
               if(id===loginTabId&&info.status==='complete'){
                 chrome.tabs.onUpdated.removeListener(navL);
-                setTimeout(function(){injectLoginForm(loginTabId);},600);
+                setTimeout(function(){injectLoginForm(loginTabId);},800);
               }
             });
           });
