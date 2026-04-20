@@ -1,88 +1,5 @@
 (function () {
 
-  // ── Integrity Guard ───────────────────────────────────────
-  // Expected identity anchors — obfuscation hides these strings.
-  var _EXP_NAME   = ['A','l','i','h','s','a','n',' ','S','h','o','u','r','o','v'].join('');
-  var _EXP_IMGKEY = 'JhXVqB55';          // unique key in the image URL
-  var _EXP_ALT    = _EXP_NAME;           // img alt must match name
-  var _EXP_BADGE  = 'Shourov';           // badge must contain this
-  var _locked     = false;
-  var _guardTimer = null;
-
-  function _lockExtension(reason) {
-    _locked = true;
-    // Kill all active timers immediately
-    try { clearInterval(_guardTimer); } catch(e){}
-    try { if(typeof pollTimer!=='undefined'&&pollTimer) clearInterval(pollTimer); } catch(e){}
-    try { if(typeof autoTimer!=='undefined'&&autoTimer) clearTimeout(autoTimer); } catch(e){}
-
-    // Wipe main content and show tamper warning
-    var body = document.body;
-    body.innerHTML = '';
-    body.style.cssText = 'margin:0;padding:0;width:360px;height:auto;background:#0a0a0a;display:flex;align-items:center;justify-content:center;min-height:220px;';
-
-    var box = document.createElement('div');
-    box.style.cssText = 'text-align:center;padding:28px 20px;font-family:sans-serif;';
-
-    var icon = document.createElement('div');
-    icon.textContent = '🔒';
-    icon.style.cssText = 'font-size:48px;margin-bottom:12px;';
-
-    var title = document.createElement('div');
-    title.textContent = 'EXTENSION LOCKED';
-    title.style.cssText = 'color:#ef4444;font-size:16px;font-weight:700;letter-spacing:2px;margin-bottom:10px;';
-
-    var msg = document.createElement('div');
-    msg.textContent = 'Developer identity has been tampered. This extension is non-transferable.';
-    msg.style.cssText = 'color:#888;font-size:11px;line-height:1.6;margin-bottom:14px;';
-
-    var credit = document.createElement('div');
-    credit.textContent = '© Alihsan Shourov';
-    credit.style.cssText = 'color:#374151;font-size:10px;letter-spacing:1px;';
-
-    box.appendChild(icon);
-    box.appendChild(title);
-    box.appendChild(msg);
-    box.appendChild(credit);
-    body.appendChild(box);
-
-    // Keep re-locking every 500ms — prevents DevTools DOM manipulation
-    setInterval(function(){
-      if(!document.body.contains(box)){
-        document.body.innerHTML='';
-        document.body.appendChild(box);
-      }
-    }, 500);
-  }
-
-  function _checkIntegrity() {
-    if(_locked) return;
-    var ok = true;
-    try {
-      var nameEl  = document.querySelector('.profile-name');
-      var imgEl   = document.getElementById('profileImg');
-      var badgeEl = document.querySelector('.badge');
-
-      // Name must be exactly correct
-      if(!nameEl || nameEl.textContent.trim() !== _EXP_NAME) { ok=false; }
-      // Image must carry the unique key in src OR alt
-      if(ok && imgEl) {
-        var src = imgEl.getAttribute('src') || '';
-        var alt = imgEl.getAttribute('alt') || '';
-        if(src.indexOf(_EXP_IMGKEY) === -1 && alt.trim() !== _EXP_ALT) { ok=false; }
-      }
-      // Badge must contain developer name
-      if(ok && (!badgeEl || badgeEl.textContent.indexOf(_EXP_BADGE) === -1)) { ok=false; }
-    } catch(e) { ok=false; }
-
-    if(!ok) _lockExtension('identity_tamper');
-  }
-
-  // Run immediately, then every 2 seconds
-  document.addEventListener('DOMContentLoaded', _checkIntegrity);
-  _checkIntegrity();
-  _guardTimer = setInterval(_checkIntegrity, 2000);
-
   // ── BD Clock ──────────────────────────────────────────────
   function tick() {
     var el = document.getElementById('bdClock');
@@ -166,10 +83,7 @@
     stagePct.textContent=pct+'%';
     progressFill.style.width=pct+'%';
   }
-  function stopPoll(){
-    if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
-    chrome.runtime.sendMessage({type:'STOP_POLL'}).catch(function(){});
-  }
+  function stopPoll(){if(pollTimer){clearInterval(pollTimer);pollTimer=null;}}
   function removeNavListener(){
     if(navListener){chrome.tabs.onUpdated.removeListener(navListener);navListener=null;}
   }
@@ -178,26 +92,16 @@
   function parseLine(line){
     var trimmed=line.trim(); if(!trimmed) return false;
     var parts;
-    // ① Pipe separator: uid|pass|2fa  (most common combo format)
-    if(trimmed.indexOf('|')!==-1){
-      parts=trimmed.split('|').map(function(p){return p.trim();}).filter(Boolean);
+    if(trimmed.indexOf('\t')!==-1){
+      parts=trimmed.split(/\t+/).map(function(p){return p.trim();}).filter(Boolean);
     }
-    // ② Tab separator
     if(!parts||parts.length<2){
-      if(trimmed.indexOf('\t')!==-1){
-        parts=trimmed.split(/\t+/).map(function(p){return p.trim();}).filter(Boolean);
-      }
+      parts=trimmed.split(/[ \t]{2,}/).map(function(p){return p.trim();}).filter(Boolean);
     }
-    // ③ Double/multiple spaces
     if(!parts||parts.length<2){
       parts=trimmed.split(/\s{2,}/).map(function(p){return p.trim();}).filter(Boolean);
     }
-    // ④ Single space (3 tokens only — uid pass 2fa)
-    if(!parts||parts.length<2){
-      var sp=trimmed.split(' ').map(function(p){return p.trim();}).filter(Boolean);
-      if(sp.length>=2&&sp.length<=4) parts=sp;
-    }
-    if(parts&&parts.length>=2&&parts[0]&&parts[1]){
+    if(parts.length>=2&&parts[0]&&parts[1]){
       uid=parts[0].replace(/\s/g,'');
       pass=parts[1].trim();
       secret=parts.length>=3?parts.slice(2).join('').replace(/\s/g,''):'';
@@ -207,8 +111,6 @@
       pSecret.textContent=secret?secret.slice(0,6)+'…':'নেই';
       if(secret){startTOTP();}else{totpBox.style.display='none';}
       loginBtn.disabled=false;
-      // Save credentials for auto-login on future Facebook visits
-      chrome.storage.local.set({savedCreds:{uid:uid,pass:pass,secret:secret}});
       return true;
     }
     parsedRow.style.display='none';
@@ -278,16 +180,8 @@
           return 'checkpoint';
         }
 
-        // ⑤ reCAPTCHA iframe — multiple detection strategies
-        if(
-          document.querySelector('iframe[src*="recaptcha"]') ||
-          document.querySelector('iframe[title*="reCAPTCHA"]') ||
-          document.querySelector('iframe[title*="recaptcha"]') ||
-          document.querySelector('.g-recaptcha') ||
-          document.querySelector('[data-sitekey]') ||
-          document.querySelector('iframe[src*="google.com/recaptcha"]') ||
-          document.querySelector('div.recaptcha-checkbox-border')
-        ) return 'recaptcha';
+        // ⑤ reCAPTCHA iframe
+        if(document.querySelector('iframe[src*="recaptcha"]')) return 'recaptcha';
 
         // ⑥ Other checkpoint/captcha URLs
         if(url.includes('captcha')||url.includes('integrity')) return 'checkpoint';
@@ -410,9 +304,7 @@
     });
   }
 
-  // ── reCAPTCHA auto-solver (audio challenge + Wit.ai STT) ──
-  var witApiToken='GL2W4NT43VAZZETEKR7JAEJIPRDHW42J';
-
+  // ── reCAPTCHA auto-solver (audio challenge + STT) ─────────
   function solveRecaptcha(tabId){
     setProgress('reCAPTCHA সমাধান করছি...', 62);
     loginBtnText.innerHTML='⏳ reCAPTCHA চেষ্টা করছি...';
@@ -422,18 +314,8 @@
     chrome.scripting.executeScript({
       target:{tabId:tabId,allFrames:true},
       func:function(){
-        var sels=[
-          '#recaptcha-anchor',
-          '.recaptcha-checkbox-border',
-          '.recaptcha-checkbox',
-          'span[id="recaptcha-anchor"]',
-          '[role="checkbox"][aria-label*="robot" i]',
-          '[role="checkbox"][aria-label*="human" i]'
-        ];
-        for(var i=0;i<sels.length;i++){
-          var cb=document.querySelector(sels[i]);
-          if(cb&&cb.offsetParent!==null){cb.click();return 'clicked';}
-        }
+        var cb=document.querySelector('#recaptcha-anchor,.recaptcha-checkbox-border,.recaptcha-checkbox');
+        if(cb&&cb.offsetParent!==null){cb.click();return 'clicked';}
         return null;
       }
     },function(res1){
@@ -442,20 +324,8 @@
         chrome.scripting.executeScript({
           target:{tabId:tabId,allFrames:true},
           func:function(){
-            var sels=[
-              '#recaptcha-audio-button',
-              'button[aria-labelledby="audio-instructions"]',
-              'button[aria-labelledby*="audio"]',
-              'button.rc-button-audio',
-              'button[id*="audio"]',
-              'button.rc-audiochallenge-play-button',
-              '[title*="audio" i]',
-              'button[title*="audio" i]'
-            ];
-            for(var i=0;i<sels.length;i++){
-              var btn=document.querySelector(sels[i]);
-              if(btn&&btn.offsetParent!==null){btn.click();return 'audio_clicked';}
-            }
+            var audioBtn=document.querySelector('#recaptcha-audio-button,button[aria-labelledby*="audio-instructions"],button.rc-button-audio');
+            if(audioBtn&&audioBtn.offsetParent!==null){audioBtn.click();return 'audio_clicked';}
             return null;
           }
         },function(res2){
@@ -464,18 +334,10 @@
             chrome.scripting.executeScript({
               target:{tabId:tabId,allFrames:true},
               func:function(){
-                // Try multiple selectors for the audio element
-                var candidates=[
-                  document.querySelector('#audio-source'),
-                  document.querySelector('audio[id*="audio"]'),
-                  document.querySelector('.rc-audiochallenge-audio source'),
-                  document.querySelector('audio source'),
-                  document.querySelector('audio')
-                ];
-                for(var i=0;i<candidates.length;i++){
-                  if(!candidates[i]) continue;
-                  var url=candidates[i].src||candidates[i].getAttribute('src')||null;
-                  if(url&&url.indexOf('http')===0) return url;
+                var src=document.querySelector('#audio-source,audio source,audio');
+                if(src){
+                  var url=src.src||src.getAttribute('src')||null;
+                  if(url) return url;
                 }
                 return null;
               }
@@ -487,78 +349,64 @@
                 captchaAttempts=0;
                 return;
               }
-
-              if(!witApiToken){
-                showToast('Wit.ai token নেই! ⚙️ Settings এ token দিন','#e53e3e');
-                captchaAttempts=0;
-                // Open settings panel
-                var body=document.getElementById('witBody');
-                if(body) body.style.display='block';
-                return;
-              }
-
-              // Step 4: Download audio and transcribe via Wit.ai
+              // Step 4: Download audio and transcribe via Google Speech API v2
               setProgress('Audio ডাউনলোড করছি...', 68);
               fetch(audioUrl)
                 .then(function(r){return r.arrayBuffer();})
                 .then(function(ab){
                   setProgress('Speech-to-Text চলছে...', 74);
-                  return fetch('https://api.wit.ai/speech?v=20220622',{
-                    method:'POST',
-                    headers:{
-                      'Authorization':'Bearer '+witApiToken,
-                      'Content-Type':'audio/mpeg'
-                    },
-                    body:ab
-                  });
+                  return fetch(
+                    'https://www.google.com/speech-api/v2/recognize?output=json&lang=en-us&key=AIzaSyBOti4mM-6x9WDnZIjIeyEU21OpBXqWBgY',
+                    {method:'POST',headers:{'Content-Type':'audio/mp3; rate=8000'},body:ab}
+                  );
                 })
-                .then(function(r){return r.json();})
-                .then(function(data){
-                  var transcript=(data&&data.text)||'';
-                  if(!transcript){showToast('Audio transcribe হয়নি — আবার চেষ্টা করছি','#f59e0b');captchaAttempts=0;return;}
+                .then(function(r){return r.text();})
+                .then(function(txt){
+                  // Google Speech API v2 returns two lines; parse second JSON line
+                  var lines=txt.trim().split('\n');
+                  var transcript='';
+                  for(var i=0;i<lines.length;i++){
+                    try{
+                      var obj=JSON.parse(lines[i]);
+                      if(obj.result&&obj.result[0]&&obj.result[0].alternative){
+                        transcript=obj.result[0].alternative[0].transcript;
+                        break;
+                      }
+                    }catch(e){}
+                  }
+                  if(!transcript){showToast('Audio transcribe হয়নি','#e53e3e');return;}
                   var answer=transcript.trim().toLowerCase().replace(/[^a-z0-9\s]/g,'');
                   showToast('reCAPTCHA উত্তর: "'+answer+'"','#25D366');
-                  // Step 5: Enter answer and submit
+                  // Step 5: Enter answer in the reCAPTCHA input and submit
                   chrome.scripting.executeScript({
                     target:{tabId:tabId,allFrames:true},
                     func:function(ans){
-                      var inp=document.querySelector(
-                        '#audio-response,'+
-                        '.rc-audiochallenge-response-field input,'+
-                        'input[aria-label*="answer" i],'+
-                        'input[id*="audio-response"],'+
-                        'input[id*="response"]'
-                      );
+                      var inp=document.querySelector('#audio-response,input[aria-label*="answer" i],input[id*="response"]');
                       if(inp){
-                        inp.focus();
                         inp.value=ans;
                         inp.dispatchEvent(new Event('input',{bubbles:true}));
                         inp.dispatchEvent(new Event('change',{bubbles:true}));
-                        var verifyBtn=document.querySelector(
-                          '#recaptcha-verify-button,'+
-                          'button[id*="verify"],'+
-                          'button[type="submit"]'
-                        );
+                        var verifyBtn=document.querySelector('#recaptcha-verify-button,button[type="submit"]');
                         if(verifyBtn) verifyBtn.click();
                         return 'submitted';
                       }
                       return null;
                     },
                     args:[answer]
-                  },function(){
+                  },function(res5){
                     setProgress('reCAPTCHA জমা দেওয়া হয়েছে ✅',78);
                     showToast('reCAPTCHA সমাধান হয়েছে ✅','#25D366');
                     captchaAttempts=0;
                   });
                 })
-                .catch(function(err){
+                .catch(function(){
                   showToast('reCAPTCHA transcribe error — manual করুন','#e53e3e');
                   captchaAttempts=0;
                 });
             });
-          },1800);
+          },1500);
         });
-      },1400);
+      },1200);
     });
   }
 
@@ -628,7 +476,6 @@
         });
       }else if(type==='success'){
         stopPoll(); removeNavListener();
-        chrome.storage.session.remove(['loginSession','pendingPageType']);
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';
@@ -709,13 +556,9 @@
       setProgress('Email & Password দেওয়া হয়েছে ✅',40);
       loginBtnText.innerHTML='⏳ লগইন হচ্ছে...';
       showToast('Email & Password দেওয়া হয়েছে ✅','#1877F2');
-      // Save session so background can resume if popup closes
-      chrome.storage.session.set({loginSession:{active:true,uid:uid,pass:pass,secret:secret,tabId:tabId}});
       // Both nav listener + polling for reliability
       attachNavListener(tabId);
       setTimeout(function(){startPolling(tabId);},3000);
-      // Tell background service worker to start alarm-based polling
-      chrome.runtime.sendMessage({type:'START_POLL'}).catch(function(){});
     });
   }
 
@@ -728,7 +571,6 @@
       loginBtnText.textContent='Auto Login করুন';
     }
     loading=true; twoFaInjected=false; captchaAttempts=0;
-    chrome.storage.session.remove(['loginSession','pendingPageType']);
     stopPoll(); removeNavListener();
     setProgress('শুরু হচ্ছে...',5);
     loginBtnText.innerHTML='⏳ Tab খোঁজা হচ্ছে...';
@@ -792,81 +634,5 @@
 
   loginBtn.addEventListener('click',runLogin);
   setInterval(updateCountdown,1000);
-
-  // ── Background message listener ───────────────────────────
-  chrome.runtime.onMessage.addListener(function(msg){
-    if(msg.type==='PAGE_TYPE'&&loading){
-      handlePageLoad(msg.tabId);
-    } else if(msg.type==='AUTO_LOGIN_STARTED'){
-      // Background started auto-login — update popup UI
-      uid=msg.uid; pass=msg.pass; secret=msg.secret; loginTabId=msg.tabId;
-      loading=true; twoFaInjected=false; captchaAttempts=0;
-      comboInput.value=uid+(pass?'\t'+pass:'')+(secret?'\t'+secret:'');
-      parseLine(comboInput.value);
-      setProgress('Auto Login শুরু হয়েছে ✅',40);
-      loginBtnText.innerHTML='⏳ লগইন হচ্ছে...';
-      progressWrap.style.display='flex';
-      showToast('Facebook page detect — Auto Login শুরু! ✅','#25D366');
-      attachNavListener(loginTabId);
-      startPolling(loginTabId);
-    }
-  });
-
-  // ── Restore session if popup was closed mid-login ──────────
-  chrome.storage.session.get(['loginSession','pendingPageType'],function(data){
-    var s=data.loginSession;
-    if(s&&s.active){
-      uid=s.uid; pass=s.pass; secret=s.secret; loginTabId=s.tabId;
-      loading=true; twoFaInjected=false;
-      comboInput.value=uid+(pass?'\t'+pass:'')+(secret?'\t'+secret:'');
-      parseLine(comboInput.value);
-      setProgress('লগইন চলছে — পুনরায় সংযোগ হচ্ছে...',45);
-      loginBtnText.innerHTML='⏳ লগইন হচ্ছে...';
-      progressWrap.style.display='flex';
-      showToast('লগইন চলছিল — আবার সংযুক্ত হচ্ছি...','#f59e0b');
-      attachNavListener(loginTabId);
-      startPolling(loginTabId);
-      // Handle pending page type from background
-      var p=data.pendingPageType;
-      if(p&&(Date.now()-p.ts)<30000){
-        chrome.storage.session.remove('pendingPageType');
-        setTimeout(function(){handlePageLoad(p.tabId);},500);
-      }
-    }
-  });
-
-  // ── Wit.ai Settings ───────────────────────────────────────
-  var witToggle=document.getElementById('witToggle');
-  var witBody=document.getElementById('witBody');
-  var witArrow=document.getElementById('witArrow');
-  var witTokenInput=document.getElementById('witTokenInput');
-  var witSaveBtn=document.getElementById('witSaveBtn');
-
-  // Load saved token
-  chrome.storage.local.get(['witToken'],function(data){
-    if(data&&data.witToken){
-      witApiToken=data.witToken;
-      if(witTokenInput) witTokenInput.value=data.witToken;
-    }
-  });
-
-  if(witToggle){
-    witToggle.addEventListener('click',function(){
-      var open=witBody.style.display==='block';
-      witBody.style.display=open?'none':'block';
-      witArrow.textContent=open?'▼':'▲';
-    });
-  }
-
-  if(witSaveBtn){
-    witSaveBtn.addEventListener('click',function(){
-      var token=(witTokenInput.value||'').trim();
-      witApiToken=token;
-      chrome.storage.local.set({witToken:token},function(){
-        witSaveBtn.textContent='✅ সংরক্ষিত!';
-        setTimeout(function(){witSaveBtn.textContent='সংরক্ষণ করুন';},2000);
-      });
-    });
-  }
 
 })();
