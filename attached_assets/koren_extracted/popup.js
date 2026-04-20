@@ -141,7 +141,24 @@
         var bodyText='';
         try{bodyText=(document.body.innerText||'').toLowerCase();}catch(e){}
 
-        // ① URL contains 2FA-specific patterns — check before everything
+        // ① Device notification approval screen
+        if(
+          bodyText.includes('waiting for approval')||
+          bodyText.includes('check your notifications on another device')||
+          bodyText.includes('we sent a notification')||
+          url.includes('device_based_two_factor')||
+          url.includes('approvals_required')
+        ){
+          // Check if modal is already open
+          var modal=document.querySelector('[role="dialog"]')||document.querySelector('[aria-modal="true"]');
+          if(modal){
+            var mt=(modal.innerText||'').toLowerCase();
+            if(mt.includes('authentication app')||mt.includes('choose a way')) return 'choose_method_modal';
+          }
+          return 'device_approval';
+        }
+
+        // ② URL contains 2FA-specific patterns — check before everything
         var tfaUrlKeywords=['two_step','authenticator','two-factor','two_factor',
           'login/two','identity','approvals_required','mfa','otp','verify_id'];
         for(var u=0;u<tfaUrlKeywords.length;u++){
@@ -437,7 +454,80 @@
   // ── Handle a completed page navigation ────────────────────
   function handlePageLoad(tabId){
     detectPageType(tabId,function(type){
-      if(type==='twofa'){
+      if(type==='device_approval'){
+        // Facebook waiting for device notification — click "Try Another Way"
+        setProgress('Device approval — অন্য উপায় খুঁজছি...',55);
+        loginBtnText.innerHTML='⏳ "Try Another Way" ক্লিক করছি...';
+        showToast('"Try Another Way" ক্লিক করছি...','#f59e0b');
+        chrome.scripting.executeScript({
+          target:{tabId:tabId},
+          func:function(){
+            var allBtns=Array.from(document.querySelectorAll('button,a,[role="button"]'));
+            for(var i=0;i<allBtns.length;i++){
+              var txt=(allBtns[i].textContent||allBtns[i].getAttribute('aria-label')||'').toLowerCase().trim();
+              if(txt.includes('try another way')||txt.includes('another way')||txt.includes('অন্য উপায়')){
+                allBtns[i].click(); return 'clicked';
+              }
+            }
+            return 'not_found';
+          }
+        },function(res){
+          var r=res&&res[0]&&res[0].result;
+          if(r==='clicked') showToast('"Try Another Way" ক্লিক! ✅','#25D366');
+        });
+      }else if(type==='choose_method_modal'){
+        // Modal open — select Authentication app → Continue
+        setProgress('Authentication App সিলেক্ট করছি...',62);
+        loginBtnText.innerHTML='⏳ Auth App সিলেক্ট করছি...';
+        showToast('"Authentication app" সিলেক্ট করছি...','#f59e0b');
+        chrome.scripting.executeScript({
+          target:{tabId:tabId},
+          func:function(){
+            var modal=document.querySelector('[role="dialog"]')||document.querySelector('[aria-modal="true"]')||document.body;
+            var radios=Array.from(modal.querySelectorAll('input[type="radio"]'));
+            var authRadio=null;
+            for(var r=0;r<radios.length;r++){
+              var lbl='';
+              var p=radios[r].closest('label')||radios[r].parentElement;
+              if(p) lbl=(p.textContent||'').toLowerCase();
+              if(lbl.includes('authentication app')||lbl.includes('authenticator')){authRadio=radios[r];break;}
+            }
+            if(!authRadio){
+              var rows=Array.from(modal.querySelectorAll('[role="radio"],[role="option"],label,li'));
+              for(var i=0;i<rows.length;i++){
+                var rowTxt=(rows[i].textContent||'').toLowerCase();
+                if(rowTxt.includes('authentication app')||rowTxt.includes('authenticator')){
+                  rows[i].click();
+                  setTimeout(function(){
+                    var btns=Array.from(modal.querySelectorAll('button,[role="button"]'));
+                    for(var b=0;b<btns.length;b++){
+                      var bTxt=(btns[b].textContent||'').toLowerCase().trim();
+                      if(bTxt.includes('continue')||bTxt.includes('next')){btns[b].click();break;}
+                    }
+                  },400);
+                  return 'clicked_row';
+                }
+              }
+            }
+            if(authRadio){
+              authRadio.click(); authRadio.checked=true;
+              authRadio.dispatchEvent(new Event('change',{bubbles:true}));
+              setTimeout(function(){
+                var btns=Array.from(modal.querySelectorAll('button,[role="button"]'));
+                for(var b=0;b<btns.length;b++){
+                  var bTxt=(btns[b].textContent||'').toLowerCase().trim();
+                  if(bTxt.includes('continue')||bTxt.includes('next')){btns[b].click();break;}
+                }
+              },400);
+              return 'selected';
+            }
+            return 'not_found';
+          }
+        },function(res){
+          var r=res&&res[0]&&res[0].result;
+          if(r==='selected'||r==='clicked_row') showToast('Authentication App সিলেক্ট হয়েছে ✅','#25D366');
+        });
+      }else if(type==='twofa'){
         if(twoFaInjected) return;
         if(!secret){
           stopPoll(); loading=false;
@@ -508,7 +598,9 @@
         return;
       }
       detectPageType(tabId,function(type){
-        if(type==='twofa'&&!twoFaInjected){handlePageLoad(tabId);}
+        if(type==='device_approval'){handlePageLoad(tabId);}
+        else if(type==='choose_method_modal'){handlePageLoad(tabId);}
+        else if(type==='twofa'&&!twoFaInjected){handlePageLoad(tabId);}
         else if(type==='recaptcha'&&captchaAttempts===0){handlePageLoad(tabId);}
         else if(type==='checkpoint'){handlePageLoad(tabId);}
         else if(type==='success'){handlePageLoad(tabId);}
@@ -556,6 +648,11 @@
       setProgress('Email & Password দেওয়া হয়েছে ✅',40);
       loginBtnText.innerHTML='⏳ লগইন হচ্ছে...';
       showToast('Email & Password দেওয়া হয়েছে ✅','#1877F2');
+      // Save session so background continues even if popup closes
+      chrome.storage.session.set({
+        loginSession: { active: true, uid: uid, pass: pass, secret: secret, tabId: tabId, twoFaDone: false, deviceHandled: false }
+      });
+      chrome.runtime.sendMessage({ type: 'START_POLL' }).catch(function(){});
       // Both nav listener + polling for reliability
       attachNavListener(tabId);
       setTimeout(function(){startPolling(tabId);},3000);
@@ -634,5 +731,48 @@
 
   loginBtn.addEventListener('click',runLogin);
   setInterval(updateCountdown,1000);
+
+  // ── Listen for messages from background service worker ────
+  chrome.runtime.onMessage.addListener(function(msg){
+    if(!msg) return;
+    if(msg.type==='STATUS'){
+      var m=msg.msg;
+      if(m==='device_approval'){
+        setProgress('Device approval — "Try Another Way" চাপছি...',55);
+        loginBtnText.innerHTML='⏳ Device approval handle হচ্ছে...';
+        showToast('Device approval screen — background handle করছে ✅','#f59e0b');
+      }else if(m==='choosing_auth_app'){
+        setProgress('Authentication App সিলেক্ট হচ্ছে...',62);
+        showToast('"Authentication app" সিলেক্ট হচ্ছে... ✅','#f59e0b');
+      }else if(m==='twofa_filled'){
+        var code=msg.code||'';
+        setProgress('2FA কোড দেওয়া হয়েছে ✅',90);
+        loginBtnText.innerHTML='✅ 2FA সম্পন্ন!';
+        if(code){usedCodeEl.textContent='2FA: '+code;successBox.style.display='block';}
+        showToast('Background 2FA কোড '+code+' দিয়েছে ✅','#25D366');
+      }else if(m==='success'){
+        stopPoll(); removeNavListener();
+        setProgress('লগইন সম্পন্ন! ✅',100);
+        loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
+        usedCodeEl.textContent='Login Success ✅';
+        successBox.style.display='block';
+        showToast('Background লগইন সফল! ✅','#25D366');
+        loading=false; done=true;
+      }else if(m==='need_secret'){
+        setProgress('2FA দরকার! Secret দিন',70);
+        showToast('2FA চাওয়া হচ্ছে — Secret key দিয়ে আবার দিন','#f59e0b');
+        loading=false; loginBtnText.textContent='Auto Login করুন';
+      }
+    }else if(msg.type==='PAGE_TYPE'){
+      if(msg.pageType==='device_approval'||msg.pageType==='choose_method_modal'){
+        // background already handling — just update UI
+      }
+    }else if(msg.type==='AUTO_LOGIN_STARTED'){
+      // background started auto-login from saved creds
+      loginTabId=msg.tabId;
+      setProgress('Background auto-login শুরু হয়েছে...',10);
+      showToast('Background auto-login চলছে...','#1877F2');
+    }
+  });
 
 })();
