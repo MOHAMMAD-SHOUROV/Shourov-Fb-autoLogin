@@ -784,20 +784,44 @@
   var pasteBtn = document.getElementById('pasteBtn');
   if(pasteBtn){
     pasteBtn.addEventListener('click', function(){
-      navigator.clipboard.readText().then(function(text){
-        if(!text) return;
+      function applyText(text){
+        if(!text || !text.trim()) return;
         comboInput.value = text.trim();
         comboInput.dispatchEvent(new Event('input', { bubbles: true }));
-        // ✅ visual feedback
         var orig = pasteBtn.innerHTML;
-        pasteBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Done!';
+        pasteBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Done!';
         pasteBtn.style.background = 'linear-gradient(135deg,#1877F2,#0d5fc7)';
-        setTimeout(function(){ pasteBtn.innerHTML = orig; pasteBtn.style.background=''; }, 1500);
-      }).catch(function(){
-        // Clipboard permission denied — focus textarea so user can Ctrl+V
-        comboInput.focus();
-        comboInput.select();
-      });
+        setTimeout(function(){ pasteBtn.innerHTML = orig; pasteBtn.style.background = ''; }, 1500);
+      }
+
+      function fallbackPaste(){
+        // Method 2: hidden textarea + execCommand (no permission needed)
+        var tmp = document.createElement('textarea');
+        tmp.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+        document.body.appendChild(tmp);
+        tmp.focus();
+        var ok = document.execCommand('paste');
+        var txt = tmp.value;
+        document.body.removeChild(tmp);
+        if(ok && txt) {
+          applyText(txt);
+        } else {
+          // Final fallback — just focus so user can Ctrl+V
+          comboInput.focus();
+          comboInput.select();
+        }
+      }
+
+      // Method 1: Clipboard API (needs clipboardRead permission)
+      if(navigator.clipboard && navigator.clipboard.readText){
+        navigator.clipboard.readText().then(function(text){
+          applyText(text);
+        }).catch(function(){
+          fallbackPaste();
+        });
+      } else {
+        fallbackPaste();
+      }
     });
   }
 
