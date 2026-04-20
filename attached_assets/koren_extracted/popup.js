@@ -143,11 +143,32 @@
         var bodyText='';
         try{bodyText=(document.body.innerText||'').toLowerCase();}catch(e){}
 
-        // ① Device notification approval screen
+        // ① PRIORITY: Visible code input = DEFINITELY twofa (check before everything)
+        var tfaSels=[
+          'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
+          'input[id*="approvals"]','input[id*="mfa"]',
+          'input[autocomplete="one-time-code"]',
+          'input[placeholder="Code"]','input[placeholder="code"]',
+          'input[placeholder*="code" i]','input[placeholder*="কোড"]',
+          'input[aria-label*="code" i]','input[aria-label*="authentication" i]',
+        ];
+        for(var i=0;i<tfaSels.length;i++){
+          var el=document.querySelector(tfaSels[i]);
+          if(el&&el.type!=='hidden'&&el.offsetParent!==null) return 'twofa';
+        }
+
+        // ② URL contains 2FA-specific patterns
+        var tfaUrlKeywords=['two_step','two-factor','two_factor',
+          'login/two','mfa','otp','verify_id'];
+        for(var u=0;u<tfaUrlKeywords.length;u++){
+          if(url.includes(tfaUrlKeywords[u])) return 'twofa';
+        }
+
+        // ③ Device notification approval screen (NO "try another way" — that button also appears on auth app page)
         if(
           bodyText.includes('waiting for approval')||
           bodyText.includes('check your notifications on another device')||
-          bodyText.includes('we sent a notification')||
+          bodyText.includes('we sent a notification to your')||
           url.includes('device_based_two_factor')||
           url.includes('approvals_required')
         ){
@@ -160,34 +181,12 @@
           return 'device_approval';
         }
 
-        // ② URL contains 2FA-specific patterns — check before everything
-        var tfaUrlKeywords=['two_step','authenticator','two-factor','two_factor',
-          'login/two','identity','approvals_required','mfa','otp','verify_id'];
-        for(var u=0;u<tfaUrlKeywords.length;u++){
-          if(url.includes(tfaUrlKeywords[u])) return 'twofa';
-        }
-
-        // ② Body text contains 2FA keywords
-        var tfaTextKw=['authentication app','6-digit','two-factor','two factor',
+        // ④ Body text contains 2FA keywords
+        var tfaTextKw=['go to your authentication app','6-digit','two-factor','two factor',
           'verification code','enter the code','enter code','approvals code',
-          'confirmation code','security code','duo mobile','google authenticator',
-          'কোড লিখুন','কোড দিন','প্রমাণীকরণ'];
+          'confirmation code','security code','কোড লিখুন','কোড দিন'];
         for(var t=0;t<tfaTextKw.length;t++){
           if(bodyText.includes(tfaTextKw[t])) return 'twofa';
-        }
-
-        // ③ 2FA input selectors
-        var tfaSels=[
-          'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
-          'input[id*="approvals"]','input[id*="mfa"]',
-          'input[autocomplete="one-time-code"]',
-          'input[placeholder="Code"]','input[placeholder="code"]',
-          'input[placeholder*="code" i]','input[placeholder*="কোড"]',
-          'input[aria-label*="code" i]','input[aria-label*="authentication" i]',
-        ];
-        for(var i=0;i<tfaSels.length;i++){
-          var el=document.querySelector(tfaSels[i]);
-          if(el&&el.type!=='hidden'&&el.offsetParent!==null) return 'twofa';
         }
 
         // ④ Checkpoint URL — any visible non-email/pass input → likely 2FA
@@ -780,6 +779,16 @@
 
   loginBtn.addEventListener('click',runLogin);
   setInterval(updateCountdown,1000);
+
+  // ── Paste replaces all content in the input ───────────────
+  comboInput.addEventListener('paste', function(e){
+    e.preventDefault();
+    var text = (e.clipboardData || window.clipboardData).getData('text');
+    if(!text) return;
+    // Replace entire content with pasted text
+    comboInput.value = text.trim();
+    comboInput.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 
   // ── Listen for messages from background service worker ────
   chrome.runtime.onMessage.addListener(function(msg){

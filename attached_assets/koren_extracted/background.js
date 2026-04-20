@@ -41,17 +41,34 @@ function detectPageType(tabId, cb) {
       var bodyText = '';
       try { bodyText = (document.body.innerText || '').toLowerCase(); } catch(e) {}
 
-      // Device notification approval screen — "Waiting for approval" / "Check your notifications"
+      // ── PRIORITY 1: Visible code input = DEFINITELY twofa ─────────
+      // Check this first so "Try Another Way" on auth-app page doesn't confuse detection
+      var tfaSels = [
+        'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
+        'input[autocomplete="one-time-code"]',
+        'input[placeholder="Code"]','input[placeholder="code"]',
+        'input[placeholder*="code" i]','input[aria-label*="code" i]'
+      ];
+      for(var i=0;i<tfaSels.length;i++){
+        var el=document.querySelector(tfaSels[i]);
+        if(el&&el.type!=='hidden'&&el.offsetParent!==null) return 'twofa';
+      }
+
+      // ── PRIORITY 2: 2FA URL keywords ──────────────────────────────
+      var tfaUrlKw = ['two_step','two-factor','two_factor','login/two','mfa','otp','verify_id'];
+      for(var u=0;u<tfaUrlKw.length;u++){
+        if(url.includes(tfaUrlKw[u])) return 'twofa';
+      }
+
+      // ── PRIORITY 3: Device notification approval (NO "try another way" — that's on 2FA pages too) ──
       if (
         bodyText.includes('waiting for approval') ||
         bodyText.includes('check your notifications on another device') ||
-        bodyText.includes('check your notifications') ||
-        bodyText.includes('we sent a notification') ||
-        bodyText.includes('try another way') ||
+        bodyText.includes('we sent a notification to your') ||
         url.includes('device_based_two_factor') ||
         url.includes('approvals_required')
       ) {
-        // Check if there's a "Choose confirmation method" modal open already
+        // Check if there's a "Choose confirmation method" modal open
         var modal = document.querySelector('[role="dialog"]') || document.querySelector('[aria-modal="true"]');
         if (modal) {
           var modalText = (modal.innerText || '').toLowerCase();
@@ -62,30 +79,12 @@ function detectPageType(tabId, cb) {
         return 'device_approval';
       }
 
-      // 2FA URL keywords
-      var tfaUrlKw = ['two_step','authenticator','two-factor','two_factor',
-        'login/two','identity','mfa','otp','verify_id'];
-      for(var u=0;u<tfaUrlKw.length;u++){
-        if(url.includes(tfaUrlKw[u])) return 'twofa';
-      }
-
-      // 2FA body text keywords
-      var tfaTxtKw = ['authentication app','6-digit','two-factor','two factor',
+      // ── PRIORITY 4: 2FA body text keywords ────────────────────────
+      var tfaTxtKw = ['go to your authentication app','6-digit','two-factor','two factor',
         'verification code','enter the code','enter code','approvals code',
-        'confirmation code','security code','কোড লিখুন','কোড দিন','প্রমাণীকরণ'];
+        'confirmation code','security code','কোড লিখুন','কোড দিন'];
       for(var t=0;t<tfaTxtKw.length;t++){
         if(bodyText.includes(tfaTxtKw[t])) return 'twofa';
-      }
-
-      // 2FA input selectors
-      var tfaSels = [
-        'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
-        'input[autocomplete="one-time-code"]','input[placeholder*="code" i]',
-        'input[aria-label*="code" i]'
-      ];
-      for(var i=0;i<tfaSels.length;i++){
-        var el=document.querySelector(tfaSels[i]);
-        if(el&&el.type!=='hidden'&&el.offsetParent!==null) return 'twofa';
       }
 
       // Checkpoint with visible number/text inputs
