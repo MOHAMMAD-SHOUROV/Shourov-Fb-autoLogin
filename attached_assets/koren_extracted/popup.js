@@ -780,6 +780,27 @@
   loginBtn.addEventListener('click',runLogin);
   setInterval(updateCountdown,1000);
 
+  // ── Paste Button — clipboard থেকে read করে auto fill ─────
+  var pasteBtn = document.getElementById('pasteBtn');
+  if(pasteBtn){
+    pasteBtn.addEventListener('click', function(){
+      navigator.clipboard.readText().then(function(text){
+        if(!text) return;
+        comboInput.value = text.trim();
+        comboInput.dispatchEvent(new Event('input', { bubbles: true }));
+        // ✅ visual feedback
+        var orig = pasteBtn.innerHTML;
+        pasteBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Done!';
+        pasteBtn.style.background = 'linear-gradient(135deg,#1877F2,#0d5fc7)';
+        setTimeout(function(){ pasteBtn.innerHTML = orig; pasteBtn.style.background=''; }, 1500);
+      }).catch(function(){
+        // Clipboard permission denied — focus textarea so user can Ctrl+V
+        comboInput.focus();
+        comboInput.select();
+      });
+    });
+  }
+
   // ── Paste replaces all content in the input ───────────────
   comboInput.addEventListener('paste', function(e){
     e.preventDefault();
