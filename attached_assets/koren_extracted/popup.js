@@ -673,6 +673,18 @@
     setProgress('শুরু হচ্ছে...',5);
     loginBtnText.innerHTML='⏳ Tab খোঁজা হচ্ছে...';
 
+    // ★ CRITICAL FIX: Clear stale session + force-write CURRENT creds
+    // This prevents background.js's tabs.onUpdated from auto-filling with OLD savedCreds
+    // when user starts a new login with different credentials.
+    var currentUid=uid, currentPass=pass, currentSecret=secret;
+    chrome.storage.session.remove(['loginSession'], function(){
+      chrome.storage.local.set({ savedCreds: { uid: currentUid, pass: currentPass, secret: currentSecret } }, function(){
+        startLoginFlow();
+      });
+    });
+  }
+
+  function startLoginFlow(){
     chrome.tabs.query({url:['https://www.facebook.com/*','https://m.facebook.com/*']},function(fbTabs){
       if(fbTabs&&fbTabs.length>0){
         loginTabId=fbTabs[0].id;
@@ -779,6 +791,118 @@
 
   loginBtn.addEventListener('click',runLogin);
   setInterval(updateCountdown,1000);
+
+  // ── Saved Accounts (Multi-ID) Management ─────────────────
+  var saveBtn = document.getElementById('saveBtn');
+  var savedAccountsWrap = document.getElementById('savedAccountsWrap');
+  var savedAccountsList = document.getElementById('savedAccountsList');
+  var clearAllBtn = document.getElementById('clearAllBtn');
+  var MAX_SAVED = 10;
+
+  function loadSavedAccounts(cb){
+    chrome.storage.local.get(['savedAccounts'], function(d){
+      cb(Array.isArray(d.savedAccounts) ? d.savedAccounts : []);
+    });
+  }
+
+  function persistSavedAccounts(arr){
+    chrome.storage.local.set({ savedAccounts: arr }, function(){
+      renderSavedAccounts();
+    });
+  }
+
+  function renderSavedAccounts(){
+    loadSavedAccounts(function(arr){
+      if(!arr.length){
+        savedAccountsWrap.style.display = 'none';
+        return;
+      }
+      savedAccountsWrap.style.display = 'block';
+      savedAccountsList.innerHTML = '';
+      arr.forEach(function(acc, idx){
+        var chip = document.createElement('div');
+        chip.className = 'saved-chip';
+        chip.dataset.idx = idx;
+        var hasSecret = !!acc.secret;
+        var displayUid = acc.uid.length > 22 ? acc.uid.slice(0,20) + '…' : acc.uid;
+        chip.innerHTML =
+          '<div class="chip-info">' +
+            '<div class="chip-uid">' + escapeHtml(displayUid) +
+              (hasSecret ? '<span class="chip-2fa-badge">2FA</span>' : '') +
+            '</div>' +
+            '<div class="chip-meta">ক্লিক করে Login</div>' +
+          '</div>' +
+          '<button class="chip-del" title="মুছে ফেলুন">×</button>';
+        // Chip click → load + login
+        chip.addEventListener('click', function(e){
+          if(e.target.classList.contains('chip-del')) return;
+          loadAccountAndLogin(acc);
+        });
+        // Delete button
+        chip.querySelector('.chip-del').addEventListener('click', function(e){
+          e.stopPropagation();
+          deleteAccount(idx);
+        });
+        savedAccountsList.appendChild(chip);
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function saveCurrentAccount(silent){
+    if(!uid || !pass){
+      if(!silent) showToast('আগে UID/Password paste করুন', '#e53e3e');
+      return;
+    }
+    loadSavedAccounts(function(arr){
+      // Remove duplicate (same uid)
+      arr = arr.filter(function(a){ return a.uid !== uid; });
+      // Add new at top
+      arr.unshift({ uid: uid, pass: pass, secret: secret, ts: Date.now() });
+      // Cap at MAX_SAVED
+      if(arr.length > MAX_SAVED) arr = arr.slice(0, MAX_SAVED);
+      persistSavedAccounts(arr);
+      if(!silent) showToast('✅ ID সেভ হয়েছে — ' + uid.slice(0,18), '#25D366');
+    });
+  }
+
+  function deleteAccount(idx){
+    loadSavedAccounts(function(arr){
+      arr.splice(idx, 1);
+      persistSavedAccounts(arr);
+      showToast('ID মুছে ফেলা হয়েছে', '#e53e3e');
+    });
+  }
+
+  function loadAccountAndLogin(acc){
+    // Load creds into textarea + parse
+    var line = acc.uid + '\t' + acc.pass + (acc.secret ? '\t' + acc.secret : '');
+    comboInput.value = line;
+    parseLine(line);
+    showToast('🚀 Login শুরু হচ্ছে — ' + acc.uid.slice(0,18), '#1877F2');
+    // Trigger login (use small delay so UI updates)
+    setTimeout(function(){ runLogin(); }, 200);
+  }
+
+  if(saveBtn){
+    saveBtn.addEventListener('click', function(){ saveCurrentAccount(false); });
+  }
+  if(clearAllBtn){
+    clearAllBtn.addEventListener('click', function(){
+      if(confirm('সব সেভ করা ID মুছে ফেলতে চান?')){
+        persistSavedAccounts([]);
+        showToast('সব ID মুছে ফেলা হয়েছে', '#e53e3e');
+      }
+    });
+  }
+
+  // Initial render
+  renderSavedAccounts();
 
   // ── Paste Button — clipboard থেকে read করে auto fill ─────
   var pasteBtn = document.getElementById('pasteBtn');
