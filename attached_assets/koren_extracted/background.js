@@ -54,17 +54,14 @@ function detectPageType(tabId, cb) {
         if(el&&el.type!=='hidden'&&el.offsetParent!==null) return 'twofa';
       }
 
-      // ── PRIORITY 2: 2FA URL keywords ──────────────────────────────
-      var tfaUrlKw = ['two_step','two-factor','two_factor','login/two','mfa','otp','verify_id'];
-      for(var u=0;u<tfaUrlKw.length;u++){
-        if(url.includes(tfaUrlKw[u])) return 'twofa';
-      }
-
-      // ── PRIORITY 3: Device notification approval (NO "try another way" — that's on 2FA pages too) ──
+      // ── PRIORITY 2: Device notification approval ──────────────────
+      // CHECK BEFORE URL keywords — because FB's device-approval URL is /two_step_verification/two_factor
+      // (which would falsely match "two_step" URL keyword)
       if (
         bodyText.includes('waiting for approval') ||
         bodyText.includes('check your notifications on another device') ||
         bodyText.includes('we sent a notification to your') ||
+        bodyText.includes('check your facebook notifications') ||
         url.includes('device_based_two_factor') ||
         url.includes('approvals_required')
       ) {
@@ -77,6 +74,12 @@ function detectPageType(tabId, cb) {
           }
         }
         return 'device_approval';
+      }
+
+      // ── PRIORITY 3: 2FA URL keywords ──────────────────────────────
+      var tfaUrlKw = ['two_step','two-factor','two_factor','login/two','mfa','otp','verify_id'];
+      for(var u=0;u<tfaUrlKw.length;u++){
+        if(url.includes(tfaUrlKw[u])) return 'twofa';
       }
 
       // ── PRIORITY 4: 2FA body text keywords ────────────────────────

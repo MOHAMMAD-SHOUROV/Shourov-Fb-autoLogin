@@ -143,7 +143,7 @@
         var bodyText='';
         try{bodyText=(document.body.innerText||'').toLowerCase();}catch(e){}
 
-        // ① PRIORITY: Visible code input = DEFINITELY twofa (check before everything)
+        // ① PRIORITY: Visible code input = DEFINITELY twofa
         var tfaSels=[
           'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
           'input[id*="approvals"]','input[id*="mfa"]',
@@ -157,28 +157,28 @@
           if(el&&el.type!=='hidden'&&el.offsetParent!==null) return 'twofa';
         }
 
-        // ② URL contains 2FA-specific patterns
-        var tfaUrlKeywords=['two_step','two-factor','two_factor',
-          'login/two','mfa','otp','verify_id'];
-        for(var u=0;u<tfaUrlKeywords.length;u++){
-          if(url.includes(tfaUrlKeywords[u])) return 'twofa';
-        }
-
-        // ③ Device notification approval screen (NO "try another way" — that button also appears on auth app page)
+        // ② Device notification approval (CHECK BEFORE URL keywords — FB uses /two_step_verification/two_factor URL)
         if(
           bodyText.includes('waiting for approval')||
           bodyText.includes('check your notifications on another device')||
           bodyText.includes('we sent a notification to your')||
+          bodyText.includes('check your facebook notifications')||
           url.includes('device_based_two_factor')||
           url.includes('approvals_required')
         ){
-          // Check if modal is already open
           var modal=document.querySelector('[role="dialog"]')||document.querySelector('[aria-modal="true"]');
           if(modal){
             var mt=(modal.innerText||'').toLowerCase();
             if(mt.includes('authentication app')||mt.includes('choose a way')) return 'choose_method_modal';
           }
           return 'device_approval';
+        }
+
+        // ③ URL contains 2FA-specific patterns
+        var tfaUrlKeywords=['two_step','two-factor','two_factor',
+          'login/two','mfa','otp','verify_id'];
+        for(var u=0;u<tfaUrlKeywords.length;u++){
+          if(url.includes(tfaUrlKeywords[u])) return 'twofa';
         }
 
         // ④ Body text contains 2FA keywords
