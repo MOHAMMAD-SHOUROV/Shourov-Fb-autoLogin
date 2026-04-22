@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Shourov-Fb-AutoLogin — FB Login Tool",
   "short_name": "Shourov FB",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Auto Facebook Login with 2FA TOTP support. Works in background. Developed by Alihsan Shourov.",
   "icons": {
     "16": "icons/icon16.png",
