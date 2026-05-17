@@ -41,6 +41,16 @@ function detectPageType(tabId, cb) {
       var bodyText = '';
       try { bodyText = (document.body.innerText || '').toLowerCase(); } catch(e) {}
 
+      // ── PRIORITY 0: "Sign in as" multi-account chooser dialog ─────
+      var dialogs = Array.from(document.querySelectorAll('[role="dialog"],[aria-modal="true"]'));
+      for(var d=0;d<dialogs.length;d++){
+        var dTxt=(dialogs[d].innerText||'').toLowerCase();
+        if(dTxt.includes('sign in as')){ return 'sign_in_as_dialog'; }
+      }
+      if(bodyText.includes('sign in as')&&(document.querySelector('[role="listbox"]')||document.querySelector('[role="list"]'))){
+        return 'sign_in_as_dialog';
+      }
+
       // ── PRIORITY 1: Visible code input = DEFINITELY twofa ─────────
       // Check this first so "Try Another Way" on auth-app page doesn't confuse detection
       var tfaSels = [
@@ -353,12 +363,42 @@ function autoFillLogin(tabId, uid, pass, secret) {
   });
 }
 
+// ── Close "Sign in as" chooser dialog ────────────────────────────
+function closeSignInAsDialog(tabId, cb) {
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    func: function() {
+      var btns = Array.from(document.querySelectorAll('button,[role="button"]'));
+      for(var i=0;i<btns.length;i++){
+        var txt=(btns[i].textContent||btns[i].getAttribute('aria-label')||'').toLowerCase().trim();
+        if(txt==='close'||txt==='বন্ধ'||txt==='বন্ধ করুন'){btns[i].click();return 'closed';}
+      }
+      var closeBtn=document.querySelector('[aria-label="Close"],[aria-label="close"],[aria-label="বন্ধ করুন"]');
+      if(closeBtn&&closeBtn.offsetParent!==null){closeBtn.click();return 'closed_aria';}
+      document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',keyCode:27,bubbles:true,cancelable:true}));
+      return 'escape_sent';
+    }
+  }, function(results){
+    if(chrome.runtime.lastError){ cb(false); return; }
+    cb(true);
+  });
+}
+
 // ── Core handler: runs on every poll + nav event ──────────────────
 function handlePageState(tabId, session) {
   detectPageType(tabId, function(type) {
     notifyPopup({ type: 'PAGE_TYPE', pageType: type, tabId: tabId });
 
-    if(type === 'device_approval') {
+    if(type === 'sign_in_as_dialog') {
+      // Auto-close "Sign in as" chooser then navigate to clean login
+      notifyPopup({ type: 'STATUS', msg: 'sign_in_as_dialog' });
+      closeSignInAsDialog(tabId, function(){
+        setTimeout(function(){
+          chrome.tabs.update(tabId, {url: 'https://www.facebook.com/login'});
+        }, 600);
+      });
+
+    } else if(type === 'device_approval') {
       // Facebook is waiting for device notification — click "Try Another Way"
       if(!session.deviceHandled){
         chrome.storage.session.set({ loginSession: Object.assign({}, session, { deviceHandled: true }) });

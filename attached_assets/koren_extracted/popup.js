@@ -88,6 +88,56 @@
     if(navListener){chrome.tabs.onUpdated.removeListener(navListener);navListener=null;}
   }
 
+  // ── Copy to clipboard helper ──────────────────────────────
+  function copyToClipboard(text, label) {
+    if(!text || text === '—' || text === '------') { showToast('কিছু নেই copy করার', '#e53e3e'); return; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){
+        showToast('✅ ' + (label||'') + ' copied!', '#25D366');
+      }).catch(function(){
+        fallbackCopy(text, label);
+      });
+    } else {
+      fallbackCopy(text, label);
+    }
+  }
+  function fallbackCopy(text, label){
+    var ta=document.createElement('textarea');
+    ta.value=text; ta.style.cssText='position:fixed;top:0;left:0;opacity:0;';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); showToast('✅ '+(label||'')+' copied!','#25D366'); }
+    catch(e){ showToast('Copy failed','#e53e3e'); }
+    document.body.removeChild(ta);
+  }
+
+  // Setup copy buttons in parsedRow
+  function setupParsedCopyBtns(){
+    var cUid=document.getElementById('copyUid');
+    var cPass=document.getElementById('copyPass');
+    var cSecret=document.getElementById('copySecret');
+    var cTotp=document.getElementById('copyTotp');
+    if(cUid) cUid.onclick=function(){ copyToClipboard(uid,'UID'); };
+    if(cPass) cPass.onclick=function(){ copyToClipboard(pass,'Password'); };
+    if(cSecret) cSecret.onclick=function(){ copyToClipboard(secret,'2FA Secret'); };
+    if(cTotp) cTotp.onclick=function(){ copyToClipboard(totpCode,'2FA Code'); };
+  }
+  setupParsedCopyBtns();
+
+  // ── One-time auto-login tracking ──────────────────────────
+  function isAutoLoginDone(theUid, cb){
+    chrome.storage.local.get(['autoLoginedUids'], function(d){
+      var done = d.autoLoginedUids || {};
+      cb(!!done[theUid]);
+    });
+  }
+  function markAutoLoginDone(theUid){
+    chrome.storage.local.get(['autoLoginedUids'], function(d){
+      var done = d.autoLoginedUids || {};
+      done[theUid] = true;
+      chrome.storage.local.set({ autoLoginedUids: done });
+    });
+  }
+
   // ── Parse input line ──────────────────────────────────────
   function parseLine(line){
     var trimmed=line.trim(); if(!trimmed) return false;
@@ -111,7 +161,6 @@
       pSecret.textContent=secret?secret.slice(0,6)+'…':'নেই';
       if(secret){startTOTP();}else{totpBox.style.display='none';}
       loginBtn.disabled=false;
-      // Save credentials so background can auto-login even when popup is closed
       chrome.storage.local.set({ savedCreds: { uid: uid, pass: pass, secret: secret } });
       return true;
     }
@@ -143,7 +192,18 @@
         var bodyText='';
         try{bodyText=(document.body.innerText||'').toLowerCase();}catch(e){}
 
-        // ① PRIORITY: Visible code input = DEFINITELY twofa
+        // ① "Sign in as" multi-account chooser dialog — detect and auto-close
+        var dialogs=Array.from(document.querySelectorAll('[role="dialog"],[aria-modal="true"]'));
+        for(var d=0;d<dialogs.length;d++){
+          var dTxt=(dialogs[d].innerText||'').toLowerCase();
+          if(dTxt.includes('sign in as')){return 'sign_in_as_dialog';}
+        }
+        // Also check heading text on page (non-modal variant)
+        if(bodyText.includes('sign in as')&&(document.querySelector('[role="listbox"]')||document.querySelector('[role="list"]'))){
+          return 'sign_in_as_dialog';
+        }
+
+        // ② PRIORITY: Visible code input = DEFINITELY twofa
         var tfaSels=[
           'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
           'input[id*="approvals"]','input[id*="mfa"]',
@@ -157,7 +217,7 @@
           if(el&&el.type!=='hidden'&&el.offsetParent!==null) return 'twofa';
         }
 
-        // ② Device notification approval (CHECK BEFORE URL keywords — FB uses /two_step_verification/two_factor URL)
+        // ③ Device notification approval
         if(
           bodyText.includes('waiting for approval')||
           bodyText.includes('check your notifications on another device')||
@@ -174,14 +234,14 @@
           return 'device_approval';
         }
 
-        // ③ URL contains 2FA-specific patterns
+        // ④ URL contains 2FA-specific patterns
         var tfaUrlKeywords=['two_step','two-factor','two_factor',
           'login/two','mfa','otp','verify_id'];
         for(var u=0;u<tfaUrlKeywords.length;u++){
           if(url.includes(tfaUrlKeywords[u])) return 'twofa';
         }
 
-        // ④ Body text contains 2FA keywords
+        // ⑤ Body text contains 2FA keywords
         var tfaTextKw=['go to your authentication app','6-digit','two-factor','two factor',
           'verification code','enter the code','enter code','approvals code',
           'confirmation code','security code','কোড লিখুন','কোড দিন'];
@@ -189,7 +249,7 @@
           if(bodyText.includes(tfaTextKw[t])) return 'twofa';
         }
 
-        // ④ Checkpoint URL — any visible non-email/pass input → likely 2FA
+        // ⑥ Checkpoint URL
         if(url.includes('checkpoint')||url.includes('approvals')){
           var ins=document.querySelectorAll('input[type="tel"],input[type="number"],input[type="text"]');
           for(var j=0;j<ins.length;j++){
@@ -198,15 +258,13 @@
           return 'checkpoint';
         }
 
-        // ⑤ reCAPTCHA iframe
+        // ⑦ reCAPTCHA iframe
         if(document.querySelector('iframe[src*="recaptcha"]')) return 'recaptcha';
 
-        // ⑥ Other checkpoint/captcha URLs
         if(url.includes('captcha')||url.includes('integrity')) return 'checkpoint';
 
-        // ⑦ Still on login page
+        // ⑧ Still on login page
         if(url.includes('/login')||url.match(/facebook\.com\/login/)){
-          // Maybe a 2FA variant under /login path
           var lIns=document.querySelectorAll('input[type="text"],input[type="tel"],input[type="number"]');
           for(var li=0;li<lIns.length;li++){
             if(lIns[li].offsetParent!==null&&!lIns[li].name.match(/email|pass|user/i)) return 'twofa';
@@ -214,15 +272,13 @@
           return 'unknown';
         }
 
-        // ⑧ Success — STRICT: require positive home page signals
+        // ⑨ Success — STRICT: require positive home page signals
         if(url.match(/facebook\.com/)){
-          // If any 2FA content still visible, not success
           var tfaStillVisible=document.querySelector('input[placeholder="Code"]')||
             (bodyText.includes('authentication app'))||
             (bodyText.includes('6-digit'));
           if(tfaStillVisible) return 'twofa';
 
-          // Require actual logged-in home page elements
           var homeSigs=document.querySelector('[aria-label="Home"]')||
             document.querySelector('[data-pagelet="LeftRail"]')||
             document.querySelector('[role="feed"]')||
@@ -240,12 +296,10 @@
   }
 
   // ── Simulate realistic keyboard typing for 2FA ───────────
-  // Facebook's React form requires real keyboard events per character
   function inject2FA(tabId,code,cb){
     chrome.scripting.executeScript({
       target:{tabId:tabId},
       func:function(c){
-        // Selector list for 2FA input
         var sels=[
           'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
           'input[id*="approvals"]','input[id*="mfa"]',
@@ -266,7 +320,6 @@
         }
         if(!inp) return 'not_found';
 
-        // Use native value setter so React knows the value changed
         var nativeSetter=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');
         function setNative(el,val){
           if(nativeSetter&&nativeSetter.set) nativeSetter.set.call(el,val);
@@ -274,11 +327,9 @@
         }
 
         inp.focus();
-        // Clear field first
         setNative(inp,'');
         inp.dispatchEvent(new Event('input',{bubbles:true}));
 
-        // Type each digit one by one with full keyboard event sequence
         var delay=0;
         for(var k=0;k<c.length;k++){
           (function(ch,idx){
@@ -288,13 +339,10 @@
               inp.dispatchEvent(new KeyboardEvent('keypress',{key:ch,code:'Digit'+ch,bubbles:true,cancelable:true}));
               inp.dispatchEvent(new Event('input',{bubbles:true}));
               inp.dispatchEvent(new KeyboardEvent('keyup',{key:ch,code:'Digit'+ch,bubbles:true,cancelable:true}));
-              // After last digit, submit
               if(idx===c.length-1){
                 setTimeout(function(){
                   inp.dispatchEvent(new Event('change',{bubbles:true}));
-                  // Try specific 2FA confirm buttons first
                   var btn=document.querySelector('[data-testid="two_factor_auth_confirm_button"]');
-                  // Then find any visible button with "Continue" / "Submit" / "Confirm" text
                   if(!btn){
                     var allBtns=Array.from(document.querySelectorAll('button,[role="button"]'));
                     var kws=['continue','submit','confirm','verify','next','ok','done'];
@@ -310,7 +358,7 @@
                 },600);
               }
             },delay);
-            delay+=80; // 80ms between each digit
+            delay+=80;
           })(c[k],k);
         }
         return 'injected';
@@ -328,7 +376,6 @@
     loginBtnText.innerHTML='⏳ reCAPTCHA চেষ্টা করছি...';
     showToast('reCAPTCHA পাওয়া গেছে — audio challenge চেষ্টা করছি!','#f59e0b');
 
-    // Step 1: Click the checkbox in the anchor iframe
     chrome.scripting.executeScript({
       target:{tabId:tabId,allFrames:true},
       func:function(){
@@ -337,7 +384,6 @@
         return null;
       }
     },function(res1){
-      // Step 2: Wait, then click audio challenge button in bframe
       setTimeout(function(){
         chrome.scripting.executeScript({
           target:{tabId:tabId,allFrames:true},
@@ -347,7 +393,6 @@
             return null;
           }
         },function(res2){
-          // Step 3: Get audio source URL
           setTimeout(function(){
             chrome.scripting.executeScript({
               target:{tabId:tabId,allFrames:true},
@@ -367,7 +412,6 @@
                 captchaAttempts=0;
                 return;
               }
-              // Step 4: Download audio and transcribe via Google Speech API v2
               setProgress('Audio ডাউনলোড করছি...', 68);
               fetch(audioUrl)
                 .then(function(r){return r.arrayBuffer();})
@@ -380,7 +424,6 @@
                 })
                 .then(function(r){return r.text();})
                 .then(function(txt){
-                  // Google Speech API v2 returns two lines; parse second JSON line
                   var lines=txt.trim().split('\n');
                   var transcript='';
                   for(var i=0;i<lines.length;i++){
@@ -395,7 +438,6 @@
                   if(!transcript){showToast('Audio transcribe হয়নি','#e53e3e');return;}
                   var answer=transcript.trim().toLowerCase().replace(/[^a-z0-9\s]/g,'');
                   showToast('reCAPTCHA উত্তর: "'+answer+'"','#25D366');
-                  // Step 5: Enter answer in the reCAPTCHA input and submit
                   chrome.scripting.executeScript({
                     target:{tabId:tabId,allFrames:true},
                     func:function(ans){
@@ -452,11 +494,54 @@
     },function(results){cb(results&&results[0]&&results[0].result);});
   }
 
+  // ── Close "Sign in as" dialog ─────────────────────────────
+  function closeSignInAsDialog(tabId, cb){
+    chrome.scripting.executeScript({
+      target:{tabId:tabId},
+      func:function(){
+        // Find close button in the dialog
+        var btns=Array.from(document.querySelectorAll('button,[role="button"]'));
+        for(var i=0;i<btns.length;i++){
+          var txt=(btns[i].textContent||btns[i].getAttribute('aria-label')||'').toLowerCase().trim();
+          if(txt==='close'||txt==='বন্ধ'||txt==='বন্ধ করুন'){
+            btns[i].click(); return 'closed_by_text';
+          }
+        }
+        // Try aria-label="Close"
+        var closeBtn=document.querySelector('[aria-label="Close"],[aria-label="close"],[aria-label="বন্ধ করুন"]');
+        if(closeBtn&&closeBtn.offsetParent!==null){closeBtn.click();return 'closed_by_aria';}
+        // Try pressing Escape key
+        document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',keyCode:27,bubbles:true,cancelable:true}));
+        return 'escape_sent';
+      }
+    },function(results){
+      var r=results&&results[0]&&results[0].result;
+      cb(r);
+    });
+  }
+
   // ── Handle a completed page navigation ────────────────────
   function handlePageLoad(tabId){
     detectPageType(tabId,function(type){
-      if(type==='device_approval'){
-        // Facebook waiting for device notification — click "Try Another Way"
+      if(type==='sign_in_as_dialog'){
+        // Auto-close the "Sign in as" chooser and then fill the login form
+        setProgress('"Sign in as" dialog বন্ধ করছি...',15);
+        loginBtnText.innerHTML='⏳ Account chooser বন্ধ করছি...';
+        showToast('"Sign in as" dialog পাওয়া গেছে — বন্ধ করছি...','#f59e0b');
+        closeSignInAsDialog(tabId, function(){
+          setTimeout(function(){
+            // After closing, navigate to clean login page and fill
+            chrome.tabs.update(tabId,{url:'https://www.facebook.com/login'},function(){
+              chrome.tabs.onUpdated.addListener(function navL(id,info){
+                if(id===tabId&&info.status==='complete'){
+                  chrome.tabs.onUpdated.removeListener(navL);
+                  setTimeout(function(){injectLoginForm(tabId);},800);
+                }
+              });
+            });
+          },600);
+        });
+      }else if(type==='device_approval'){
         setProgress('Device approval — অন্য উপায় খুঁজছি...',55);
         loginBtnText.innerHTML='⏳ "Try Another Way" ক্লিক করছি...';
         showToast('"Try Another Way" ক্লিক করছি...','#f59e0b');
@@ -477,7 +562,6 @@
           if(r==='clicked') showToast('"Try Another Way" ক্লিক! ✅','#25D366');
         });
       }else if(type==='choose_method_modal'){
-        // Modal open — select Authentication app → Continue
         setProgress('Authentication App সিলেক্ট করছি...',62);
         loginBtnText.innerHTML='⏳ Auth App সিলেক্ট করছি...';
         showToast('"Authentication app" সিলেক্ট করছি...','#f59e0b');
@@ -488,13 +572,14 @@
             var radios=Array.from(modal.querySelectorAll('input[type="radio"]'));
             var authRadio=null;
             for(var r=0;r<radios.length;r++){
-              var lbl='';
-              var p=radios[r].closest('label')||radios[r].parentElement;
-              if(p) lbl=(p.textContent||'').toLowerCase();
-              if(lbl.includes('authentication app')||lbl.includes('authenticator')){authRadio=radios[r];break;}
+              var label='';
+              if(radios[r].labels&&radios[r].labels.length) label=(radios[r].labels[0].textContent||'').toLowerCase();
+              var parent=radios[r].closest('label')||radios[r].parentElement;
+              if(parent) label+=' '+(parent.textContent||'').toLowerCase();
+              if(label.includes('authentication app')||label.includes('authenticator')){authRadio=radios[r];break;}
             }
             if(!authRadio){
-              var rows=Array.from(modal.querySelectorAll('[role="radio"],[role="option"],label,li'));
+              var rows=Array.from(modal.querySelectorAll('[role="radio"],[role="option"],[role="listitem"],label,li'));
               for(var i=0;i<rows.length;i++){
                 var rowTxt=(rows[i].textContent||'').toLowerCase();
                 if(rowTxt.includes('authentication app')||rowTxt.includes('authenticator')){
@@ -572,6 +657,8 @@
         usedCodeEl.textContent='Login Success ✅';
         successBox.style.display='block';
         showToast('লগইন সফল! ✅','#25D366');
+        // Mark this UID as auto-login done
+        if(uid) markAutoLoginDone(uid);
         loading=false; done=true;
       }
     });
@@ -587,7 +674,7 @@
     chrome.tabs.onUpdated.addListener(navListener);
   }
 
-  // ── Polling (fallback every 2s for pages that don't fire nav) ─
+  // ── Polling (fallback every 2s) ───────────────────────────
   function startPolling(tabId){
     stopPoll(); pollAttempts=0;
     pollTimer=setInterval(function(){
@@ -599,7 +686,8 @@
         return;
       }
       detectPageType(tabId,function(type){
-        if(type==='device_approval'){handlePageLoad(tabId);}
+        if(type==='sign_in_as_dialog'){handlePageLoad(tabId);}
+        else if(type==='device_approval'){handlePageLoad(tabId);}
         else if(type==='choose_method_modal'){handlePageLoad(tabId);}
         else if(type==='twofa'&&!twoFaInjected){handlePageLoad(tabId);}
         else if(type==='recaptcha'&&captchaAttempts===0){handlePageLoad(tabId);}
@@ -649,12 +737,10 @@
       setProgress('Email & Password দেওয়া হয়েছে ✅',40);
       loginBtnText.innerHTML='⏳ লগইন হচ্ছে...';
       showToast('Email & Password দেওয়া হয়েছে ✅','#1877F2');
-      // Save session so background continues even if popup closes
       chrome.storage.session.set({
         loginSession: { active: true, uid: uid, pass: pass, secret: secret, tabId: tabId, twoFaDone: false, deviceHandled: false }
       });
       chrome.runtime.sendMessage({ type: 'START_POLL' }).catch(function(){});
-      // Both nav listener + polling for reliability
       attachNavListener(tabId);
       setTimeout(function(){startPolling(tabId);},3000);
     });
@@ -673,15 +759,17 @@
     setProgress('শুরু হচ্ছে...',5);
     loginBtnText.innerHTML='⏳ Tab খোঁজা হচ্ছে...';
 
-    // ★ CRITICAL FIX: Clear stale session + force-write CURRENT creds
-    // This prevents background.js's tabs.onUpdated from auto-filling with OLD savedCreds
-    // when user starts a new login with different credentials.
     var currentUid=uid, currentPass=pass, currentSecret=secret;
     chrome.storage.session.remove(['loginSession'], function(){
       chrome.storage.local.set({ savedCreds: { uid: currentUid, pass: currentPass, secret: currentSecret } }, function(){
         startLoginFlow();
       });
     });
+  }
+
+  // Called from manual button / chip click (always runs, ignores one-time tracking)
+  function runLoginForced(){
+    runLogin();
   }
 
   function startLoginFlow(){
@@ -698,17 +786,32 @@
           startPolling(loginTabId);
           handlePageLoad(loginTabId);
         }else if(url.includes('/login')){
-          // Already on login page — fill directly
-          setTimeout(function(){injectLoginForm(loginTabId);},400);
+          // Check for "Sign in as" first
+          setTimeout(function(){
+            detectPageType(loginTabId,function(type){
+              if(type==='sign_in_as_dialog'){
+                handlePageLoad(loginTabId);
+              }else{
+                injectLoginForm(loginTabId);
+              }
+            });
+          },400);
         }else{
-          // Homepage or any other FB page — always navigate to /login for reliability
           setProgress('Login page এ যাচ্ছি...',15);
           loginBtnText.innerHTML='⏳ Login page এ যাচ্ছি...';
           chrome.tabs.update(loginTabId,{url:'https://www.facebook.com/login'},function(){
             chrome.tabs.onUpdated.addListener(function navL(id,info){
               if(id===loginTabId&&info.status==='complete'){
                 chrome.tabs.onUpdated.removeListener(navL);
-                setTimeout(function(){injectLoginForm(loginTabId);},800);
+                setTimeout(function(){
+                  detectPageType(loginTabId,function(type){
+                    if(type==='sign_in_as_dialog'){
+                      handlePageLoad(loginTabId);
+                    }else{
+                      injectLoginForm(loginTabId);
+                    }
+                  });
+                },800);
               }
             });
           });
@@ -724,7 +827,15 @@
             chrome.tabs.onUpdated.addListener(function navL(id,info){
               if(id===loginTabId&&info.status==='complete'){
                 chrome.tabs.onUpdated.removeListener(navL);
-                setTimeout(function(){injectLoginForm(loginTabId);},600);
+                setTimeout(function(){
+                  detectPageType(loginTabId,function(type){
+                    if(type==='sign_in_as_dialog'){
+                      handlePageLoad(loginTabId);
+                    }else{
+                      injectLoginForm(loginTabId);
+                    }
+                  });
+                },600);
               }
             });
           });
@@ -735,28 +846,23 @@
 
   // ── Restore state when popup is reopened ─────────────────
   (function restoreState(){
-    // Restore saved credentials into the input field
     chrome.storage.local.get(['savedCreds'], function(d){
       if(!d.savedCreds) return;
       var creds = d.savedCreds;
-      // Rebuild combo line: uid  pass  secret
       var line = creds.uid + '\t' + creds.pass + (creds.secret ? '\t' + creds.secret : '');
       comboInput.value = line;
       parseLine(line);
 
-      // Now check if there's an active login session
       chrome.storage.session.get(['loginSession'], function(s){
         var session = s.loginSession;
         if(!session || !session.active) return;
         loginTabId = session.tabId;
         loading = true;
 
-        // Show resumed state in UI
         setProgress('Background এ চলছে... (resumed)', 30);
         loginBtnText.innerHTML = '⏳ Background এ login চলছে...';
         showToast('Background এ login চলছে — popup খোলা থাকলে update দেখবেন', '#1877F2');
 
-        // Light polling so popup updates if background finishes
         stopPoll(); pollAttempts = 0;
         pollTimer = setInterval(function(){
           pollAttempts++;
@@ -764,7 +870,6 @@
           chrome.storage.session.get(['loginSession'], function(sd){
             if(!sd.loginSession || !sd.loginSession.active){
               stopPoll();
-              // Session ended — check if success
               setProgress('লগইন সম্পন্ন হয়েছে ✅', 100);
               loginBtnText.innerHTML = '✅ লগইন সম্পন্ন!';
               usedCodeEl.textContent = 'Login Success ✅';
@@ -785,11 +890,20 @@
     progressWrap.style.display='none';
     stopPoll();removeNavListener();clearTimeout(autoTimer);
     if(parseLine(comboInput.value.trim())){
-      autoTimer=setTimeout(function(){runLogin();},350);
+      // One-time auto-login: only auto-login if this UID hasn't been auto-logged before
+      (function(capturedUid){
+        isAutoLoginDone(capturedUid, function(alreadyDone){
+          if(!alreadyDone){
+            autoTimer=setTimeout(function(){runLogin();},350);
+          } else {
+            showToast('ইতিমধ্যে লগইন হয়েছে — "Login" বাটন চাপুন', '#1877F2');
+          }
+        });
+      })(uid);
     }
   });
 
-  loginBtn.addEventListener('click',runLogin);
+  loginBtn.addEventListener('click', runLoginForced);
   setInterval(updateCountdown,1000);
 
   // ── Saved Accounts (Multi-ID) Management ─────────────────
@@ -811,6 +925,9 @@
     });
   }
 
+  // Copy SVG icon
+  var COPY_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+
   function renderSavedAccounts(){
     loadSavedAccounts(function(arr){
       if(!arr.length){
@@ -824,25 +941,50 @@
         chip.className = 'saved-chip';
         chip.dataset.idx = idx;
         var hasSecret = !!acc.secret;
-        var displayUid = acc.uid.length > 22 ? acc.uid.slice(0,20) + '…' : acc.uid;
+        var displayUid = acc.uid.length > 18 ? acc.uid.slice(0,16) + '…' : acc.uid;
+
         chip.innerHTML =
-          '<div class="chip-info">' +
+          '<div class="chip-main" style="cursor:pointer;flex:1;min-width:0;">' +
             '<div class="chip-uid">' + escapeHtml(displayUid) +
               (hasSecret ? '<span class="chip-2fa-badge">2FA</span>' : '') +
             '</div>' +
             '<div class="chip-meta">ক্লিক করে Login</div>' +
           '</div>' +
+          '<div class="chip-copy-row">' +
+            '<button class="chip-copy-btn" data-copy="uid" title="Copy UID">' + COPY_SVG + '<span>UID</span></button>' +
+            '<button class="chip-copy-btn" data-copy="pass" title="Copy Password">' + COPY_SVG + '<span>Pass</span></button>' +
+            (hasSecret ? '<button class="chip-copy-btn" data-copy="secret" title="Copy 2FA Secret">' + COPY_SVG + '<span>2FA</span></button>' : '') +
+            (hasSecret ? '<button class="chip-copy-btn" data-copy="totp" title="Copy live TOTP code">' + COPY_SVG + '<span>Code</span></button>' : '') +
+          '</div>' +
           '<button class="chip-del" title="মুছে ফেলুন">×</button>';
-        // Chip click → load + login
-        chip.addEventListener('click', function(e){
-          if(e.target.classList.contains('chip-del')) return;
+
+        // Main area click → auto-login (forced, ignores one-time tracking)
+        chip.querySelector('.chip-main').addEventListener('click', function(){
           loadAccountAndLogin(acc);
         });
+
+        // Copy buttons
+        chip.querySelectorAll('.chip-copy-btn').forEach(function(btn){
+          btn.addEventListener('click', function(e){
+            e.stopPropagation();
+            var type = btn.getAttribute('data-copy');
+            if(type==='uid'){ copyToClipboard(acc.uid,'UID'); }
+            else if(type==='pass'){ copyToClipboard(acc.pass,'Password'); }
+            else if(type==='secret'){ copyToClipboard(acc.secret,'2FA Secret'); }
+            else if(type==='totp'){
+              generateTOTP(acc.secret).then(function(c){
+                copyToClipboard(c,'2FA Code');
+              });
+            }
+          });
+        });
+
         // Delete button
         chip.querySelector('.chip-del').addEventListener('click', function(e){
           e.stopPropagation();
           deleteAccount(idx);
         });
+
         savedAccountsList.appendChild(chip);
       });
     });
@@ -860,11 +1002,8 @@
       return;
     }
     loadSavedAccounts(function(arr){
-      // Remove duplicate (same uid)
       arr = arr.filter(function(a){ return a.uid !== uid; });
-      // Add new at top
       arr.unshift({ uid: uid, pass: pass, secret: secret, ts: Date.now() });
-      // Cap at MAX_SAVED
       if(arr.length > MAX_SAVED) arr = arr.slice(0, MAX_SAVED);
       persistSavedAccounts(arr);
       if(!silent) showToast('✅ ID সেভ হয়েছে — ' + uid.slice(0,18), '#25D366');
@@ -885,8 +1024,8 @@
     comboInput.value = line;
     parseLine(line);
     showToast('🚀 Login শুরু হচ্ছে — ' + acc.uid.slice(0,18), '#1877F2');
-    // Trigger login (use small delay so UI updates)
-    setTimeout(function(){ runLogin(); }, 200);
+    // Always force-login on chip click (ignores one-time tracking)
+    setTimeout(function(){ runLoginForced(); }, 200);
   }
 
   if(saveBtn){
@@ -896,6 +1035,8 @@
     clearAllBtn.addEventListener('click', function(){
       if(confirm('সব সেভ করা ID মুছে ফেলতে চান?')){
         persistSavedAccounts([]);
+        // Also clear one-time auto-login tracking so fresh start
+        chrome.storage.local.remove(['autoLoginedUids']);
         showToast('সব ID মুছে ফেলা হয়েছে', '#e53e3e');
       }
     });
@@ -904,7 +1045,7 @@
   // Initial render
   renderSavedAccounts();
 
-  // ── Paste Button — clipboard থেকে read করে auto fill ─────
+  // ── Paste Button ──────────────────────────────────────────
   var pasteBtn = document.getElementById('pasteBtn');
   if(pasteBtn){
     pasteBtn.addEventListener('click', function(){
@@ -919,7 +1060,6 @@
       }
 
       function fallbackPaste(){
-        // Method 2: hidden textarea + execCommand (no permission needed)
         var tmp = document.createElement('textarea');
         tmp.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
         document.body.appendChild(tmp);
@@ -930,13 +1070,11 @@
         if(ok && txt) {
           applyText(txt);
         } else {
-          // Final fallback — just focus so user can Ctrl+V
           comboInput.focus();
           comboInput.select();
         }
       }
 
-      // Method 1: Clipboard API (needs clipboardRead permission)
       if(navigator.clipboard && navigator.clipboard.readText){
         navigator.clipboard.readText().then(function(text){
           applyText(text);
@@ -954,7 +1092,6 @@
     e.preventDefault();
     var text = (e.clipboardData || window.clipboardData).getData('text');
     if(!text) return;
-    // Replace entire content with pasted text
     comboInput.value = text.trim();
     comboInput.dispatchEvent(new Event('input', { bubbles: true }));
   });
@@ -964,7 +1101,11 @@
     if(!msg) return;
     if(msg.type==='STATUS'){
       var m=msg.msg;
-      if(m==='device_approval'){
+      if(m==='sign_in_as_dialog'){
+        setProgress('"Sign in as" dialog বন্ধ করছি...',15);
+        loginBtnText.innerHTML='⏳ Account chooser বন্ধ করছি...';
+        showToast('"Sign in as" dialog — background বন্ধ করছে ✅','#f59e0b');
+      }else if(m==='device_approval'){
         setProgress('Device approval — "Try Another Way" চাপছি...',55);
         loginBtnText.innerHTML='⏳ Device approval handle হচ্ছে...';
         showToast('Device approval screen — background handle করছে ✅','#f59e0b');
@@ -984,6 +1125,7 @@
         usedCodeEl.textContent='Login Success ✅';
         successBox.style.display='block';
         showToast('Background লগইন সফল! ✅','#25D366');
+        if(uid) markAutoLoginDone(uid);
         loading=false; done=true;
       }else if(m==='recaptcha'){
         setProgress('reCAPTCHA পাওয়া গেছে — audio চেষ্টা করছি...',62);
@@ -1004,7 +1146,6 @@
         // background already handling — just update UI
       }
     }else if(msg.type==='AUTO_LOGIN_STARTED'){
-      // background started auto-login from saved creds
       loginTabId=msg.tabId;
       setProgress('Background auto-login শুরু হয়েছে...',10);
       showToast('Background auto-login চলছে...','#1877F2');
