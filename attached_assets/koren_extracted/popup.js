@@ -192,6 +192,15 @@
         var bodyText='';
         try{bodyText=(document.body.innerText||'').toLowerCase();}catch(e){}
 
+        // ① "Trust this device" page — auto-click to save device
+        if(
+          url.includes('remember_browser')||
+          url.includes('trust_this_device')||
+          (bodyText.includes('trust this device')&&(url.includes('two_factor')||url.includes('checkpoint')||url.includes('login')))
+        ){
+          return 'trust_device';
+        }
+
         // ① "Sign in as" multi-account chooser dialog — detect and auto-close
         var dialogs=Array.from(document.querySelectorAll('[role="dialog"],[aria-modal="true"]'));
         for(var d=0;d<dialogs.length;d++){
@@ -494,6 +503,58 @@
     },function(results){cb(results&&results[0]&&results[0].result);});
   }
 
+  // ── Auto-click "Trust this device" + block notification popup ──
+  function handleTrustDevice(tabId, cb){
+    // First, block the notification permission popup via contentSettings
+    try{
+      chrome.contentSettings.notifications.set({
+        primaryPattern:'https://www.facebook.com/*',
+        setting:'block'
+      });
+      chrome.contentSettings.notifications.set({
+        primaryPattern:'https://m.facebook.com/*',
+        setting:'block'
+      });
+    }catch(e){}
+
+    // Dismiss the browser notification infobar by injecting script to deny
+    chrome.scripting.executeScript({
+      target:{tabId:tabId},
+      func:function(){
+        // Override Notification API to prevent future popups
+        try{
+          Object.defineProperty(Notification,'permission',{get:function(){return 'denied';},configurable:true});
+          window.Notification={permission:'denied',requestPermission:function(){return Promise.resolve('denied');}};
+        }catch(e){}
+
+        // Click "Trust this device" button
+        var allBtns=Array.from(document.querySelectorAll('button,input[type="submit"],[role="button"],a'));
+        var trustBtn=null;
+        var kw=['trust this device','এই ডিভাইস বিশ্বাস করুন','trust device','remember this device','remember browser'];
+        for(var i=0;i<allBtns.length;i++){
+          var txt=(allBtns[i].textContent||allBtns[i].value||allBtns[i].getAttribute('aria-label')||'').toLowerCase().trim();
+          if(kw.some(function(k){return txt.includes(k);})){trustBtn=allBtns[i];break;}
+        }
+        if(!trustBtn){
+          // Fallback: look for the main CTA button on the page
+          trustBtn=document.querySelector('[data-testid*="trust"],[data-testid*="remember"]');
+        }
+        if(!trustBtn){
+          // Last fallback: any prominent submit/continue button
+          var btns=Array.from(document.querySelectorAll('button[type="submit"],button'));
+          for(var j=0;j<btns.length;j++){
+            if(btns[j].offsetParent!==null){trustBtn=btns[j];break;}
+          }
+        }
+        if(trustBtn&&trustBtn.offsetParent!==null){trustBtn.click();return 'clicked';}
+        return 'not_found';
+      }
+    },function(results){
+      var r=results&&results[0]&&results[0].result;
+      if(cb) cb(r==='clicked');
+    });
+  }
+
   // ── Close "Sign in as" dialog ─────────────────────────────
   function closeSignInAsDialog(tabId, cb){
     chrome.scripting.executeScript({
@@ -523,7 +584,20 @@
   // ── Handle a completed page navigation ────────────────────
   function handlePageLoad(tabId){
     detectPageType(tabId,function(type){
-      if(type==='sign_in_as_dialog'){
+      if(type==='trust_device'){
+        // Block notification permission popup + click "Trust this device"
+        setProgress('"Trust this device" ক্লিক করছি...',92);
+        loginBtnText.innerHTML='⏳ Trust this device ক্লিক করছি...';
+        showToast('"Trust this device" পাওয়া গেছে — ক্লিক করছি...','#25D366');
+        handleTrustDevice(tabId,function(clicked){
+          if(clicked){
+            setProgress('"Trust this device" সম্পন্ন ✅',96);
+            showToast('"Trust this device" ক্লিক হয়েছে ✅','#25D366');
+          }else{
+            showToast('Trust device button পাওয়া যায়নি, retry...','#f59e0b');
+          }
+        });
+      }else if(type==='sign_in_as_dialog'){
         // Auto-close the "Sign in as" chooser and then fill the login form
         setProgress('"Sign in as" dialog বন্ধ করছি...',15);
         loginBtnText.innerHTML='⏳ Account chooser বন্ধ করছি...';
@@ -686,7 +760,8 @@
         return;
       }
       detectPageType(tabId,function(type){
-        if(type==='sign_in_as_dialog'){handlePageLoad(tabId);}
+        if(type==='trust_device'){handlePageLoad(tabId);}
+        else if(type==='sign_in_as_dialog'){handlePageLoad(tabId);}
         else if(type==='device_approval'){handlePageLoad(tabId);}
         else if(type==='choose_method_modal'){handlePageLoad(tabId);}
         else if(type==='twofa'&&!twoFaInjected){handlePageLoad(tabId);}
@@ -1101,7 +1176,15 @@
     if(!msg) return;
     if(msg.type==='STATUS'){
       var m=msg.msg;
-      if(m==='sign_in_as_dialog'){
+      if(m==='trust_device'){
+        setProgress('"Trust this device" ক্লিক করছি...',92);
+        loginBtnText.innerHTML='⏳ Trust this device ক্লিক করছি...';
+        showToast('"Trust this device" পাওয়া গেছে — background ক্লিক করছে ✅','#25D366');
+      }else if(m==='trust_device_clicked'){
+        setProgress('"Trust this device" সম্পন্ন ✅',96);
+        loginBtnText.innerHTML='✅ Trust this device সম্পন্ন!';
+        showToast('"Trust this device" ক্লিক হয়েছে ✅','#25D366');
+      }else if(m==='sign_in_as_dialog'){
         setProgress('"Sign in as" dialog বন্ধ করছি...',15);
         loginBtnText.innerHTML='⏳ Account chooser বন্ধ করছি...';
         showToast('"Sign in as" dialog — background বন্ধ করছে ✅','#f59e0b');

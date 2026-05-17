@@ -41,7 +41,16 @@ function detectPageType(tabId, cb) {
       var bodyText = '';
       try { bodyText = (document.body.innerText || '').toLowerCase(); } catch(e) {}
 
-      // ── PRIORITY 0: "Sign in as" multi-account chooser dialog ─────
+      // ── PRIORITY 0a: "Trust this device" page ────────────────────
+      if(
+        url.includes('remember_browser')||
+        url.includes('trust_this_device')||
+        (bodyText.includes('trust this device')&&(url.includes('two_factor')||url.includes('checkpoint')||url.includes('login')))
+      ){
+        return 'trust_device';
+      }
+
+      // ── PRIORITY 0b: "Sign in as" multi-account chooser dialog ────
       var dialogs = Array.from(document.querySelectorAll('[role="dialog"],[aria-modal="true"]'));
       for(var d=0;d<dialogs.length;d++){
         var dTxt=(dialogs[d].innerText||'').toLowerCase();
@@ -389,7 +398,46 @@ function handlePageState(tabId, session) {
   detectPageType(tabId, function(type) {
     notifyPopup({ type: 'PAGE_TYPE', pageType: type, tabId: tabId });
 
-    if(type === 'sign_in_as_dialog') {
+    if(type === 'trust_device') {
+      // Block FB notification permission popup + auto-click "Trust this device"
+      notifyPopup({ type: 'STATUS', msg: 'trust_device' });
+      // Block notification permission via contentSettings
+      try {
+        chrome.contentSettings.notifications.set({ primaryPattern: 'https://www.facebook.com/*', setting: 'block' });
+        chrome.contentSettings.notifications.set({ primaryPattern: 'https://m.facebook.com/*', setting: 'block' });
+      } catch(e) {}
+      // Inject script to click "Trust this device" and override Notification API
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        func: function() {
+          // Suppress notification permission popup
+          try {
+            Object.defineProperty(Notification, 'permission', { get: function(){ return 'denied'; }, configurable: true });
+            window.Notification = { permission: 'denied', requestPermission: function(){ return Promise.resolve('denied'); } };
+          } catch(e) {}
+          // Click "Trust this device"
+          var allBtns = Array.from(document.querySelectorAll('button,input[type="submit"],[role="button"]'));
+          var trustBtn = null;
+          var kw = ['trust this device','এই ডিভাইস বিশ্বাস করুন','trust device','remember this device','remember browser'];
+          for(var i=0;i<allBtns.length;i++){
+            var txt=(allBtns[i].textContent||allBtns[i].value||allBtns[i].getAttribute('aria-label')||'').toLowerCase().trim();
+            if(kw.some(function(k){ return txt.includes(k); })){ trustBtn=allBtns[i]; break; }
+          }
+          if(!trustBtn) trustBtn=document.querySelector('[data-testid*="trust"],[data-testid*="remember"]');
+          if(!trustBtn){
+            var btns=Array.from(document.querySelectorAll('button[type="submit"],button'));
+            for(var j=0;j<btns.length;j++){ if(btns[j].offsetParent!==null){ trustBtn=btns[j]; break; } }
+          }
+          if(trustBtn && trustBtn.offsetParent!==null){ trustBtn.click(); return 'clicked'; }
+          return 'not_found';
+        }
+      }, function(results) {
+        if(chrome.runtime.lastError) return;
+        var r = results && results[0] && results[0].result;
+        if(r === 'clicked') notifyPopup({ type: 'STATUS', msg: 'trust_device_clicked' });
+      });
+
+    } else if(type === 'sign_in_as_dialog') {
       // Auto-close "Sign in as" chooser then navigate to clean login
       notifyPopup({ type: 'STATUS', msg: 'sign_in_as_dialog' });
       closeSignInAsDialog(tabId, function(){
@@ -554,14 +602,39 @@ function handlePageState(tabId, session) {
   });
 }
 
+// ── Block Facebook notification permission popup proactively ───────
+function blockFbNotifications() {
+  try {
+    chrome.contentSettings.notifications.set({ primaryPattern: 'https://www.facebook.com/*', setting: 'block' });
+    chrome.contentSettings.notifications.set({ primaryPattern: 'https://m.facebook.com/*', setting: 'block' });
+  } catch(e) {}
+}
+// Block on startup
+blockFbNotifications();
+
 // ── Tab navigation listener: fires when Facebook page fully loads ──
 chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
   if(info.status !== 'complete') return;
   if(!tab || !tab.url || !tab.url.includes('facebook.com')) return;
 
+  // Always block FB notification permission popup on any FB tab load
+  blockFbNotifications();
+  // Also override Notification API in the page so popup never appears
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    func: function() {
+      try {
+        Object.defineProperty(Notification, 'permission', { get: function(){ return 'denied'; }, configurable: true });
+        if(!window._fbNotifBlocked) {
+          window._fbNotifBlocked = true;
+          var origReq = Notification.requestPermission;
+          Notification.requestPermission = function(){ return Promise.resolve('denied'); };
+        }
+      } catch(e) {}
+    }
+  }, function() { /* silent */ });
+
   var url = tab.url;
-  var isLoginPage = url.includes('facebook.com/login');
-  var isHomepage  = !!url.match(/^https:\/\/(www\.)?facebook\.com\/?(\?.*)?$/);
 
   chrome.storage.session.get(['loginSession'], function(data) {
     var session = data.loginSession;
