@@ -83,3 +83,8 @@ externalPort = 3002
 [[ports]]
 localPort = 19516
 externalPort = 3003
+
+[userenv]
+
+[userenv.production]
+REPLIT_APP_URL = "https://shourov-fb-auto-login--shourov24.replit.app"
