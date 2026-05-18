@@ -984,13 +984,42 @@
     });
   })();
 
-  // ── Broadcast notification from Admin ─────────────────────
+  // ── Broadcast + Extension status check on popup open ──────
+  var adminBannerEl = document.getElementById('adminBanner');
+
+  function showAdminBanner(msg, color){
+    if(!adminBannerEl) return;
+    adminBannerEl.textContent = msg;
+    adminBannerEl.style.display = 'block';
+    adminBannerEl.style.background = color || '#e53e3e';
+    adminBannerEl.style.color = '#fff';
+    adminBannerEl.style.padding = '8px 14px';
+    adminBannerEl.style.borderRadius = '8px';
+    adminBannerEl.style.fontSize = '12px';
+    adminBannerEl.style.fontWeight = '700';
+    adminBannerEl.style.textAlign = 'center';
+    adminBannerEl.style.margin = '6px 0 2px';
+    adminBannerEl.style.lineHeight = '1.4';
+  }
+
+  function hideAdminBanner(){
+    if(adminBannerEl) adminBannerEl.style.display = 'none';
+  }
+
   (function checkBroadcast(){
     fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/check', { signal: AbortSignal.timeout(2500) })
       .then(function(r){ return r.json(); })
       .then(function(d){
+        if(d.allowed === false){
+          loginBtn.disabled = true;
+          loginBtn.style.opacity = '0.45';
+          loginBtn.style.cursor = 'not-allowed';
+          showAdminBanner('🔴 ' + (d.reason || 'Extension বন্ধ আছে'), '#c0392b');
+        } else {
+          hideAdminBanner();
+        }
         if(d.broadcastMessage){
-          setTimeout(function(){ showToast('📢 ' + d.broadcastMessage, '#1877F2'); }, 800);
+          setTimeout(function(){ showToast('📢 ' + d.broadcastMessage, '#1877F2'); }, 600);
         }
       })
       .catch(function(){});
