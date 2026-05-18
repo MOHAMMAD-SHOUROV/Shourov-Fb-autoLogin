@@ -267,11 +267,13 @@ router.get("/extension/check", (req, res) => {
   const uid = String(req.query.uid ?? "");
   const data = readData();
 
+  const latestVersion = data.extensionVersion ?? "1.6.3";
+
   if (!data.extensionEnabled) {
-    return void res.json({ allowed: false, reason: "Extension বন্ধ আছে (Admin দ্বারা)", broadcastMessage: data.broadcastMessage ?? null, notification: null });
+    return void res.json({ allowed: false, reason: "Extension বন্ধ আছে (Admin দ্বারা)", broadcastMessage: data.broadcastMessage ?? null, notification: null, latestVersion });
   }
   if (uid && data.users[uid]?.isBlocked) {
-    return void res.json({ allowed: false, reason: "আপনি Block করা আছেন। Admin এর সাথে যোগাযোগ করুন।", broadcastMessage: data.broadcastMessage ?? null, notification: null });
+    return void res.json({ allowed: false, reason: "আপনি Block করা আছেন। Admin এর সাথে যোগাযোগ করুন।", broadcastMessage: data.broadcastMessage ?? null, notification: null, latestVersion });
   }
 
   // Return and clear any pending per-user notification
@@ -282,7 +284,7 @@ router.get("/extension/check", (req, res) => {
     writeData(data);
   }
 
-  res.json({ allowed: true, broadcastMessage: data.broadcastMessage ?? null, notification });
+  res.json({ allowed: true, broadcastMessage: data.broadcastMessage ?? null, notification, latestVersion });
 });
 
 // ── Ping — extension registers user activity after login ────────

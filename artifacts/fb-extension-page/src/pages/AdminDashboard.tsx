@@ -26,6 +26,7 @@ interface Stats {
   blockedUsers: number;
   extensionEnabled: boolean;
   broadcastMessage: string | null;
+  extensionVersion: string;
 }
 
 function fmtDate(s: string | null) {
@@ -148,6 +149,8 @@ export default function AdminDashboard() {
   const [broadcastInput, setBroadcastInput] = useState("");
   const [broadcastSending, setBroadcastSending] = useState(false);
   const [notifyTarget, setNotifyTarget] = useState<UserRecord | null>(null);
+  const [versionInput, setVersionInput] = useState("");
+  const [versionSaving, setVersionSaving] = useState(false);
 
   function showToast(msg: string, color = "#1877f2") {
     setToast({ msg, color });
@@ -161,6 +164,7 @@ export default function AdminDashboard() {
         const s: Stats = await sRes.json();
         setStats(s);
         setBroadcastInput(s.broadcastMessage ?? "");
+        setVersionInput(s.extensionVersion ?? "1.6.3");
       }
       if (uRes.ok) { const d = await uRes.json(); setUsers(d.users ?? []); }
     } catch {}
@@ -177,6 +181,19 @@ export default function AdminDashboard() {
       }
     } catch {}
     setBroadcastSending(false);
+  }
+
+  async function saveVersion() {
+    if (!versionInput.trim()) return;
+    setVersionSaving(true);
+    try {
+      const r = await api("/admin/version", { method: "PUT", body: JSON.stringify({ version: versionInput.trim() }) });
+      if (r.ok) {
+        setStats(prev => prev ? { ...prev, extensionVersion: versionInput.trim() } : prev);
+        showToast(`✅ Version ${versionInput.trim()} সেট করা হয়েছে`, "#25D366");
+      }
+    } catch {}
+    setVersionSaving(false);
   }
 
   async function clearBroadcast() {
@@ -366,6 +383,42 @@ export default function AdminDashboard() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Version Management */}
+      <div style={{ maxWidth: 960, margin: "20px auto 0", padding: "0 20px" }}>
+        <div style={{ background: "rgba(37,211,102,0.05)", border: "1px solid rgba(37,211,102,0.25)", borderRadius: 16, padding: "22px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <span style={{ fontSize: 20 }}>🆕</span>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>Extension Version Control</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
+                নতুন version সেট করলে extension পুরনো users-দের popup-এ download করার link দেখাবে
+              </div>
+            </div>
+            <span style={{ marginLeft: "auto", background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.35)", borderRadius: 50, padding: "3px 14px", fontSize: 12, fontWeight: 700, color: "#4ade80" }}>
+              Current: v{stats?.extensionVersion ?? "1.6.3"}
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input
+              value={versionInput}
+              onChange={e => setVersionInput(e.target.value)}
+              placeholder="যেমন: 1.7.0"
+              style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", fontFamily: "inherit" }}
+            />
+            <button
+              onClick={saveVersion}
+              disabled={versionSaving || !versionInput.trim() || versionInput.trim() === (stats?.extensionVersion ?? "")}
+              style={{ background: "linear-gradient(135deg,#25D366,#128C7E)", border: "none", borderRadius: 9, padding: "10px 20px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: versionSaving || !versionInput.trim() ? "not-allowed" : "pointer", opacity: versionSaving || !versionInput.trim() ? 0.55 : 1, whiteSpace: "nowrap" }}
+            >
+              {versionSaving ? "⏳..." : "💾 Save করুন"}
+            </button>
+          </div>
+          <div style={{ marginTop: 10, fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+            💡 Extension-এর manifest.json-এ যে version আছে তার চেয়ে আলাদা কিছু দিলে পুরনো extension-এ update banner দেখাবে
           </div>
         </div>
       </div>

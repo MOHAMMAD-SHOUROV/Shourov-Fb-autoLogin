@@ -987,6 +987,24 @@
 
   // ── Broadcast + Extension status check on popup open ──────
   var adminBannerEl = document.getElementById('adminBanner');
+  var updateBannerEl = document.getElementById('updateBanner');
+
+  function showUpdateBanner(latestVer) {
+    if(!updateBannerEl) return;
+    var downloadUrl = 'https://nusaiba-it-center-2478.onrender.com/api/extension/download';
+    updateBannerEl.innerHTML = '🆕 নতুন version আছে! (v' + latestVer + ') — <a href="' + downloadUrl + '" target="_blank" style="color:#fff;font-weight:900;text-decoration:underline;">Download করুন ↗</a>';
+    updateBannerEl.style.display = 'block';
+    updateBannerEl.style.background = 'linear-gradient(135deg,#7c3aed,#5b21b6)';
+    updateBannerEl.style.color = '#fff';
+    updateBannerEl.style.padding = '9px 14px';
+    updateBannerEl.style.borderRadius = '8px';
+    updateBannerEl.style.fontSize = '12px';
+    updateBannerEl.style.fontWeight = '700';
+    updateBannerEl.style.textAlign = 'center';
+    updateBannerEl.style.margin = '6px 0 2px';
+    updateBannerEl.style.lineHeight = '1.5';
+    updateBannerEl.style.cursor = 'pointer';
+  }
 
   function showAdminBanner(msg, color){
     if(!adminBannerEl) return;
@@ -1068,6 +1086,12 @@
           }
           if(d.notification){
             setTimeout(function(){ showToast('🔔 ' + d.notification, '#7c3aed'); }, 1000);
+          }
+          if(d.latestVersion) {
+            var myVersion = '1.6.3';
+            if(d.latestVersion !== myVersion) {
+              showUpdateBanner(d.latestVersion);
+            }
           }
         })
         .catch(function(){});

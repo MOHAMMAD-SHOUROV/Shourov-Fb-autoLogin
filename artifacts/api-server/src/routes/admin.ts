@@ -27,7 +27,24 @@ router.get("/admin/stats", auth, (_req: Request, res: Response) => {
     blockedUsers: users.filter((u) => u.isBlocked).length,
     extensionEnabled: data.extensionEnabled,
     broadcastMessage: data.broadcastMessage ?? null,
+    extensionVersion: data.extensionVersion ?? "1.6.3",
   });
+});
+
+router.get("/admin/version", auth, (_req: Request, res: Response) => {
+  const data = readData();
+  res.json({ version: data.extensionVersion ?? "1.6.3" });
+});
+
+router.put("/admin/version", auth, (req: Request, res: Response) => {
+  const { version } = req.body as { version?: string };
+  if (!version?.trim()) {
+    return void res.status(400).json({ error: "version is required" });
+  }
+  const data = readData();
+  data.extensionVersion = version.trim();
+  writeData(data);
+  res.json({ ok: true, version: data.extensionVersion });
 });
 
 router.get("/admin/users", auth, (_req: Request, res: Response) => {

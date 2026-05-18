@@ -15,6 +15,7 @@ export interface UserRecord {
 export interface AdminData {
   extensionEnabled: boolean;
   broadcastMessage: string | null;
+  extensionVersion: string;
   users: Record<string, UserRecord>;
 }
 
@@ -25,12 +26,13 @@ export function readData(): AdminData {
     if (fs.existsSync(DATA_FILE)) {
       const d = JSON.parse(fs.readFileSync(DATA_FILE, "utf8")) as AdminData;
       if (!("broadcastMessage" in d)) d.broadcastMessage = null;
+      if (!("extensionVersion" in d)) d.extensionVersion = "1.6.3";
       return d;
     }
   } catch (e) {
     logger.error(e, "Failed to read admin data");
   }
-  return { extensionEnabled: true, broadcastMessage: null, users: {} };
+  return { extensionEnabled: true, broadcastMessage: null, extensionVersion: "1.6.3", users: {} };
 }
 
 export function writeData(data: AdminData): void {
