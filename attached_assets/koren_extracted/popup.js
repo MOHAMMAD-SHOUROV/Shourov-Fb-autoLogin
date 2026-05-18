@@ -726,6 +726,8 @@
         });
       }else if(type==='success'){
         stopPoll(); removeNavListener();
+        // Save UID so it cannot auto-login again
+        chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';
@@ -823,6 +825,18 @@
 
   // ── Main login flow ───────────────────────────────────────
   function runLogin(){
+    if(loading||!uid||!pass) return;
+    // Block if this UID was already auto-logged in once
+    chrome.storage.local.get(['loginedUids'], function(d) {
+      var used = d.loginedUids || [];
+      if(used.indexOf(uid) !== -1) {
+        showToast('⛔ এই ID দিয়ে আগেই Login হয়েছে! একটি ID মাত্র ১ বার কাজ করবে।', '#e53e3e');
+        return;
+      }
+      _doRunLogin();
+    });
+  }
+  function _doRunLogin(){
     if(loading||!uid||!pass) return;
     if(done){
       done=false; successBox.style.display='none';
@@ -1203,6 +1217,8 @@
         showToast('Background 2FA কোড '+code+' দিয়েছে ✅','#25D366');
       }else if(m==='success'){
         stopPoll(); removeNavListener();
+        // Save UID so it cannot auto-login again
+        chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';

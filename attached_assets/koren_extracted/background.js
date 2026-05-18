@@ -587,6 +587,14 @@ function handlePageState(tabId, session) {
     } else if(type === 'success') {
       // Login complete — stop everything
       chrome.alarms.clear('loginPoll');
+      // Mark this UID as already-logged-in (persists even after cookie clear)
+      if(session.uid) {
+        chrome.storage.local.get(['loginedUids'], function(d) {
+          var list = d.loginedUids || [];
+          if(list.indexOf(session.uid) === -1) { list.push(session.uid); }
+          chrome.storage.local.set({ loginedUids: list });
+        });
+      }
       chrome.storage.session.remove(['loginSession']);
       notifyPopup({ type: 'STATUS', msg: 'success' });
 
@@ -673,8 +681,16 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
     var uid = msg.uid;
     var pass = msg.pass;
     var secret = msg.secret || '';
-    autoFillLogin(tabId, uid, pass, secret);
-    respond({ ok: true });
+    chrome.storage.local.get(['loginedUids'], function(d) {
+      var list = d.loginedUids || [];
+      if(list.indexOf(uid) !== -1) {
+        respond({ ok: false, reason: 'already_used' });
+        return;
+      }
+      autoFillLogin(tabId, uid, pass, secret);
+      respond({ ok: true });
+    });
+    return true; // async
 
   } else if(msg.type === 'START_POLL') {
     chrome.alarms.clear('loginPoll', function(){
