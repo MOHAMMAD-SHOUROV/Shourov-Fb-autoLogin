@@ -75,7 +75,7 @@
     toastEl.style.background=color+'e8';
     toastEl.style.display='block';
     clearTimeout(toastTimer);
-    toastTimer=setTimeout(function(){toastEl.style.display='none';},4000);
+    toastTimer=setTimeout(function(){toastEl.style.display='none';},1500);
   }
   function setProgress(label,pct){
     progressWrap.style.display='flex';
