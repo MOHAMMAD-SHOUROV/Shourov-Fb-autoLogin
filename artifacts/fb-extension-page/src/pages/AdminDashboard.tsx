@@ -23,6 +23,7 @@ interface Stats {
   totalUsers: number;
   blockedUsers: number;
   extensionEnabled: boolean;
+  broadcastMessage: string | null;
 }
 
 function fmtDate(s: string | null) {
@@ -100,6 +101,8 @@ export default function AdminDashboard() {
   const [toggling, setToggling] = useState(false);
   const [actionUid, setActionUid] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; color: string } | null>(null);
+  const [broadcastInput, setBroadcastInput] = useState("");
+  const [broadcastSending, setBroadcastSending] = useState(false);
 
   function showToast(msg: string, color = "#1877f2") {
     setToast({ msg, color });
@@ -109,10 +112,40 @@ export default function AdminDashboard() {
   const loadAll = useCallback(async () => {
     try {
       const [sRes, uRes] = await Promise.all([api("/admin/stats"), api("/admin/users")]);
-      if (sRes.ok) setStats(await sRes.json());
+      if (sRes.ok) {
+        const s: Stats = await sRes.json();
+        setStats(s);
+        setBroadcastInput(s.broadcastMessage ?? "");
+      }
       if (uRes.ok) { const d = await uRes.json(); setUsers(d.users ?? []); }
     } catch {}
   }, []);
+
+  async function sendBroadcast() {
+    if (!broadcastInput.trim()) return;
+    setBroadcastSending(true);
+    try {
+      const r = await api("/admin/broadcast", { method: "PUT", body: JSON.stringify({ message: broadcastInput.trim() }) });
+      if (r.ok) {
+        setStats(prev => prev ? { ...prev, broadcastMessage: broadcastInput.trim() } : prev);
+        showToast("📢 Notification পাঠানো হয়েছে!", "#1877f2");
+      }
+    } catch {}
+    setBroadcastSending(false);
+  }
+
+  async function clearBroadcast() {
+    setBroadcastSending(true);
+    try {
+      const r = await api("/admin/broadcast", { method: "DELETE" });
+      if (r.ok) {
+        setBroadcastInput("");
+        setStats(prev => prev ? { ...prev, broadcastMessage: null } : prev);
+        showToast("🗑️ Notification মুছে ফেলা হয়েছে", "#6b7280");
+      }
+    } catch {}
+    setBroadcastSending(false);
+  }
 
   useEffect(() => { if (authed) loadAll(); }, [authed, loadAll]);
 
@@ -224,6 +257,49 @@ export default function AdminDashboard() {
             >
               {toggling ? "..." : extOn ? "🔴 বন্ধ করুন" : "✅ চালু করুন"}
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Broadcast Notification */}
+      <div style={{ maxWidth: 960, margin: "24px auto 0", padding: "0 20px" }}>
+        <div style={{ background: "rgba(24,119,242,0.06)", border: "1px solid rgba(24,119,242,0.25)", borderRadius: 16, padding: "22px 24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <span style={{ fontSize: 20 }}>📢</span>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>Extension Notification পাঠান</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>যা লিখবেন, extension popup খুললেই সব user দেখতে পাবে</div>
+            </div>
+            {stats?.broadcastMessage && (
+              <span style={{ marginLeft: "auto", background: "rgba(24,119,242,0.2)", border: "1px solid rgba(24,119,242,0.4)", borderRadius: 50, padding: "3px 12px", fontSize: 11, fontWeight: 700, color: "#60a5fa" }}>✅ Active</span>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <textarea
+              value={broadcastInput}
+              onChange={e => setBroadcastInput(e.target.value)}
+              placeholder="যেমন: নতুন update এসেছে! Extension restart করুন।"
+              rows={2}
+              style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 13, outline: "none", resize: "none", fontFamily: "inherit", lineHeight: 1.5 }}
+            />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                onClick={sendBroadcast}
+                disabled={broadcastSending || !broadcastInput.trim()}
+                style={{ background: "linear-gradient(135deg,#1877f2,#0d5fc7)", border: "none", borderRadius: 9, padding: "10px 18px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: broadcastSending || !broadcastInput.trim() ? "not-allowed" : "pointer", opacity: broadcastSending || !broadcastInput.trim() ? 0.55 : 1, whiteSpace: "nowrap" }}
+              >
+                {broadcastSending ? "⏳..." : "📤 পাঠান"}
+              </button>
+              {stats?.broadcastMessage && (
+                <button
+                  onClick={clearBroadcast}
+                  disabled={broadcastSending}
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 9, padding: "10px 18px", color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                >
+                  🗑️ মুছুন
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

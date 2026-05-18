@@ -12,6 +12,7 @@ export interface UserRecord {
 
 export interface AdminData {
   extensionEnabled: boolean;
+  broadcastMessage: string | null;
   users: Record<string, UserRecord>;
 }
 
@@ -20,12 +21,14 @@ const DATA_FILE = path.join(process.cwd(), "admin_data.json");
 export function readData(): AdminData {
   try {
     if (fs.existsSync(DATA_FILE)) {
-      return JSON.parse(fs.readFileSync(DATA_FILE, "utf8")) as AdminData;
+      const d = JSON.parse(fs.readFileSync(DATA_FILE, "utf8")) as AdminData;
+      if (!("broadcastMessage" in d)) d.broadcastMessage = null;
+      return d;
     }
   } catch (e) {
     logger.error(e, "Failed to read admin data");
   }
-  return { extensionEnabled: true, users: {} };
+  return { extensionEnabled: true, broadcastMessage: null, users: {} };
 }
 
 export function writeData(data: AdminData): void {

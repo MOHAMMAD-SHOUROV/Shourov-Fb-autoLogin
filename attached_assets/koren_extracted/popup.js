@@ -853,7 +853,7 @@
     chrome.storage.session.remove(['loginSession'], function(){
       chrome.storage.local.set({ savedCreds: { uid: currentUid, pass: currentPass, secret: currentSecret } }, function(){
         var SERVER_CHECK = 'https://nusaiba-it-center-2478.onrender.com/api/extension/check';
-        fetch(SERVER_CHECK + '?uid=' + encodeURIComponent(currentUid), { signal: AbortSignal.timeout(5000) })
+        fetch(SERVER_CHECK + '?uid=' + encodeURIComponent(currentUid), { signal: AbortSignal.timeout(2500) })
           .then(function(r){ return r.json(); })
           .then(function(d){
             if(d.allowed === false){
@@ -983,6 +983,18 @@
       });
     });
   })();
+
+  // ── Broadcast notification from Admin ─────────────────────
+  (function checkBroadcast(){
+    fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/check', { signal: AbortSignal.timeout(2500) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d.broadcastMessage){
+          setTimeout(function(){ showToast('📢 ' + d.broadcastMessage, '#1877F2'); }, 800);
+        }
+      })
+      .catch(function(){});
+  }());
 
   // ── Event listeners ───────────────────────────────────────
   comboInput.addEventListener('input',function(){

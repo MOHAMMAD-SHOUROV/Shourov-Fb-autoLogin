@@ -26,6 +26,7 @@ router.get("/admin/stats", auth, (_req: Request, res: Response) => {
     totalUsers: users.length,
     blockedUsers: users.filter((u) => u.isBlocked).length,
     extensionEnabled: data.extensionEnabled,
+    broadcastMessage: data.broadcastMessage ?? null,
   });
 });
 
@@ -81,6 +82,22 @@ router.put("/admin/extension/toggle", auth, (_req: Request, res: Response) => {
   data.extensionEnabled = !data.extensionEnabled;
   writeData(data);
   res.json({ ok: true, extensionEnabled: data.extensionEnabled });
+});
+
+// Broadcast message — send notification to all extension popups
+router.put("/admin/broadcast", auth, (req: Request, res: Response) => {
+  const { message } = req.body as { message?: string };
+  const data = readData();
+  data.broadcastMessage = message?.trim() || null;
+  writeData(data);
+  res.json({ ok: true, broadcastMessage: data.broadcastMessage });
+});
+
+router.delete("/admin/broadcast", auth, (_req: Request, res: Response) => {
+  const data = readData();
+  data.broadcastMessage = null;
+  writeData(data);
+  res.json({ ok: true });
 });
 
 export default router;
