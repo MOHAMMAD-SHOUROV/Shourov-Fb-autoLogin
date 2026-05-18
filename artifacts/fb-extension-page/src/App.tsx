@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const WA_LINK = "https://wa.me/8801709281334?text=Assalamu%20Alaikum%2C%20Shourov%20FB%20AutoLogin%20extension%20ta%20diben%20please%20%F0%9F%99%8F";
 const FB_LINK = "https://www.facebook.com/profile.php?id=61588161951831";
@@ -72,7 +73,7 @@ const steps = [
   },
 ];
 
-export default function App() {
+function HomePage() {
   const [particles, setParticles] = useState<{x:number;y:number;s:number;d:number}[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
@@ -466,4 +467,12 @@ export default function App() {
       )}
     </div>
   );
+}
+
+export default function App() {
+  const path = window.location.pathname;
+  if (path === "/admin" || path.startsWith("/admin/")) {
+    return <AdminDashboard />;
+  }
+  return <HomePage />;
 }

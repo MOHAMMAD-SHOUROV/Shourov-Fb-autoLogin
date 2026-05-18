@@ -728,6 +728,7 @@
         stopPoll(); removeNavListener();
         // Save UID so it cannot auto-login again
         chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
+        fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';
@@ -851,7 +852,19 @@
     var currentUid=uid, currentPass=pass, currentSecret=secret;
     chrome.storage.session.remove(['loginSession'], function(){
       chrome.storage.local.set({ savedCreds: { uid: currentUid, pass: currentPass, secret: currentSecret } }, function(){
-        startLoginFlow();
+        var SERVER_CHECK = 'https://nusaiba-it-center-2478.onrender.com/api/extension/check';
+        fetch(SERVER_CHECK + '?uid=' + encodeURIComponent(currentUid), { signal: AbortSignal.timeout(5000) })
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            if(d.allowed === false){
+              showToast('⛔ ' + (d.reason || 'Extension বন্ধ আছে'), '#e53e3e');
+              loading = false;
+              loginBtnText.textContent = 'Auto Login করুন';
+              return;
+            }
+            startLoginFlow();
+          })
+          .catch(function(){ startLoginFlow(); });
       });
     });
   }
@@ -1219,6 +1232,7 @@
         stopPoll(); removeNavListener();
         // Save UID so it cannot auto-login again
         chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
+        fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';

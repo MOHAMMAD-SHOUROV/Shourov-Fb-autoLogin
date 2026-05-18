@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { PassThrough } from "stream";
 import { logger } from "../lib/logger";
 import JavaScriptObfuscator from "javascript-obfuscator";
+import { readData, writeData } from "../lib/admin-data";
 
 const router = Router();
 
@@ -26,7 +27,6 @@ function findExtDir(): string {
 const EXT_DIR = findExtDir();
 logger.info({ ext_dir: EXT_DIR, exists: fs.existsSync(EXT_DIR) }, "Extension dir resolved");
 
-// ── Key management ─────────────────────────────────────────────
 const KEY_PATH = path.join(EXT_DIR, "..", ".crx_key.pem");
 
 function getOrCreateKey(): crypto.KeyObject {
@@ -46,8 +46,6 @@ function getOrCreateKey(): crypto.KeyObject {
 const PRIVATE_KEY = getOrCreateKey();
 const PUBLIC_KEY  = crypto.createPublicKey(PRIVATE_KEY);
 
-// ── Obfuscate popup.js ─────────────────────────────────────────
-// Transforms the JS so it is completely unreadable while remaining functional.
 function obfuscateJs(source: string): string {
   try {
     const result = JavaScriptObfuscator.obfuscate(source, {
@@ -58,12 +56,12 @@ function obfuscateJs(source: string): string {
       deadCodeInjectionThreshold: 0.4,
       debugProtection: true,
       debugProtectionInterval: 4000,
-      disableConsoleOutput: false,      // keep console for extension errors
+      disableConsoleOutput: false,
       identifierNamesGenerator: "hexadecimal",
       log: false,
       numbersToExpressions: true,
-      renameGlobals: false,             // chrome.*, document, etc. must stay intact
-      selfDefending: true,              // resists beautifying/formatting tools
+      renameGlobals: false,
+      selfDefending: true,
       simplify: true,
       splitStrings: true,
       splitStringsChunkLength: 8,
@@ -89,53 +87,32 @@ function obfuscateJs(source: string): string {
   }
 }
 
-// ── Minify JSON (manifest.json) ────────────────────────────────
 function minifyJson(source: string): string {
-  try {
-    return JSON.stringify(JSON.parse(source));
-  } catch {
-    return source;
-  }
+  try { return JSON.stringify(JSON.parse(source)); } catch { return source; }
 }
 
-// ── Minify HTML (popup.html) ────────────────────────────────────
 function minifyHtml(source: string): string {
   try {
     return source
-      // Remove HTML comments
       .replace(/<!--[\s\S]*?-->/g, "")
-      // Remove whitespace between tags
       .replace(/>\s+</g, "><")
-      // Collapse multiple spaces/tabs/newlines inside tags to single space
       .replace(/\s{2,}/g, " ")
-      // Remove leading/trailing whitespace
       .trim();
-  } catch {
-    return source;
-  }
+  } catch { return source; }
 }
 
-// ── Minify CSS (popup.css) ──────────────────────────────────────
 function minifyCss(source: string): string {
   try {
     return source
-      // Remove /* ... */ comments
       .replace(/\/\*[\s\S]*?\*\//g, "")
-      // Remove newlines and tabs
       .replace(/[\r\n\t]+/g, " ")
-      // Collapse multiple spaces
       .replace(/\s{2,}/g, " ")
-      // Remove spaces around punctuation that doesn't need them
       .replace(/\s*([{}:;,>~+])\s*/g, "$1")
-      // Remove trailing semicolons before }
       .replace(/;}/g, "}")
       .trim();
-  } catch {
-    return source;
-  }
+  } catch { return source; }
 }
 
-// ── Add extension files to archiver — all files protected ──────
 function addExtensionFiles(archive: archiver.Archiver): void {
   const entries = fs.readdirSync(EXT_DIR, { recursive: true }) as string[];
   for (const rel of entries) {
@@ -164,7 +141,6 @@ function addExtensionFiles(archive: archiver.Archiver): void {
   }
 }
 
-// ── Build ZIP buffer ────────────────────────────────────────────
 function buildZipBuffer(): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -181,7 +157,6 @@ function buildZipBuffer(): Promise<Buffer> {
   });
 }
 
-// ── Build CRX2 buffer ──────────────────────────────────────────
 async function buildCrxBuffer(): Promise<Buffer> {
   const zip = await buildZipBuffer();
 
@@ -198,7 +173,6 @@ async function buildCrxBuffer(): Promise<Buffer> {
   return Buffer.concat([magic, version, pubLen, sigLen, pubDer, sig, zip]);
 }
 
-// ── Pre-built cache ────────────────────────────────────────────
 let cachedZip: Buffer | null = null;
 let cachedCrx: Buffer | null = null;
 let cacheReady = false;
@@ -217,13 +191,11 @@ async function warmCache(): Promise<void> {
   }
 }
 
-// Start building immediately when the module loads
 warmCache();
 
-// ── Routes ─────────────────────────────────────────────────────
+// ── Download routes ─────────────────────────────────────────────
 
-// Desktop: ZIP (load unpacked in Chrome/Chromium)
-router.get("/extension/download", async (req, res) => {
+router.get("/extension/download", async (_req, res) => {
   try {
     const zip = cachedZip ?? await buildZipBuffer();
     res.setHeader("Content-Type", "application/zip");
@@ -237,8 +209,7 @@ router.get("/extension/download", async (req, res) => {
   }
 });
 
-// Mobile / Kiwi Browser: CRX
-router.get("/extension/download-crx", async (req, res) => {
+router.get("/extension/download-crx", async (_req, res) => {
   try {
     const crx = cachedCrx ?? await buildCrxBuffer();
     res.setHeader("Content-Type", "application/x-chrome-extension");
@@ -250,6 +221,44 @@ router.get("/extension/download-crx", async (req, res) => {
     logger.error(err, "CRX build failed");
     if (!res.headersSent) res.status(500).json({ error: "Failed to build CRX" });
   }
+});
+
+// ── Extension check — called by the extension before login ──────
+
+router.get("/extension/check", (req, res) => {
+  const uid = String(req.query.uid ?? "");
+  const data = readData();
+
+  if (!data.extensionEnabled) {
+    return void res.json({ allowed: false, reason: "Extension বন্ধ আছে (Admin দ্বারা)" });
+  }
+  if (uid && data.users[uid]?.isBlocked) {
+    return void res.json({ allowed: false, reason: "আপনি Block করা আছেন। Admin এর সাথে যোগাযোগ করুন।" });
+  }
+  res.json({ allowed: true });
+});
+
+// ── Ping — extension registers user activity after login ────────
+
+router.post("/extension/ping", (req, res) => {
+  const { uid } = req.body as { uid?: string };
+  if (!uid) return void res.json({ ok: false });
+
+  const data = readData();
+  if (!data.users[uid]) {
+    data.users[uid] = {
+      uid,
+      isBlocked: false,
+      loginCount: 0,
+      lastSeen: null,
+      createdAt: new Date().toISOString(),
+    };
+  }
+  data.users[uid].loginCount = (data.users[uid].loginCount ?? 0) + 1;
+  data.users[uid].lastSeen = new Date().toISOString();
+  writeData(data);
+
+  res.json({ ok: true });
 });
 
 export default router;
