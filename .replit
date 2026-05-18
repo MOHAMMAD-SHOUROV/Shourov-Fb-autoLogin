@@ -3,6 +3,8 @@ modules = ["nodejs-24"]
 [deployment]
 router = "application"
 deploymentTarget = "autoscale"
+run = ["bash", "-c", "PORT=8080 NODE_ENV=production node artifacts/api-server/dist/index.mjs"]
+build = ["bash", "-c", "CI=true pnpm install --frozen-lockfile && BASE_PATH=/ pnpm --filter @workspace/fb-extension-page run build && pnpm --filter @workspace/api-server run build"]
 
 [deployment.postBuild]
 args = ["pnpm", "store", "prune"]
