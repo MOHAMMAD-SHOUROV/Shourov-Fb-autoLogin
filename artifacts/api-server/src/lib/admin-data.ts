@@ -4,10 +4,12 @@ import { logger } from "./logger";
 
 export interface UserRecord {
   uid: string;
+  name?: string;
   isBlocked: boolean;
   loginCount: number;
   lastSeen: string | null;
   createdAt: string;
+  notification?: string | null;
 }
 
 export interface AdminData {

@@ -100,4 +100,16 @@ router.delete("/admin/broadcast", auth, (_req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
+router.put("/admin/users/:uid/notify", auth, (req: Request, res: Response) => {
+  const { message } = req.body as { message?: string };
+  const data = readData();
+  const uid = req.params.uid;
+  if (!data.users[uid]) {
+    return void res.status(404).json({ error: "User not found" });
+  }
+  data.users[uid].notification = message?.trim() || null;
+  writeData(data);
+  res.json({ ok: true });
+});
+
 export default router;

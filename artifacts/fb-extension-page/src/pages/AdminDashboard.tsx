@@ -13,10 +13,12 @@ function api(path: string, opts: RequestInit = {}) {
 
 interface UserRecord {
   uid: string;
+  name?: string;
   isBlocked: boolean;
   loginCount: number;
   lastSeen: string | null;
   createdAt: string;
+  notification?: string | null;
 }
 
 interface Stats {
@@ -93,6 +95,48 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
   );
 }
 
+function NotifyModal({ uid, name, onClose, onSent }: { uid: string; name?: string; onClose: () => void; onSent: () => void }) {
+  const [msg, setMsg] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function send() {
+    if (!msg.trim()) return;
+    setSending(true);
+    try {
+      const r = await api(`/admin/users/${encodeURIComponent(uid)}/notify`, { method: "PUT", body: JSON.stringify({ message: msg.trim() }) });
+      if (r.ok) { onSent(); onClose(); }
+    } catch {}
+    setSending(false);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }} onClick={onClose}>
+      <div style={{ background: "#0d1e3a", border: "1px solid rgba(24,119,242,0.4)", borderRadius: 16, padding: "28px 24px", width: "100%", maxWidth: 380, boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginBottom: 4 }}>🔔 Notification পাঠান</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 18 }}>
+          → <span style={{ color: "#60a5fa" }}>{name || uid}</span>
+          {name && <span style={{ color: "rgba(255,255,255,0.3)", marginLeft: 6, fontSize: 11 }}>({uid.slice(0, 20)})</span>}
+        </div>
+        <textarea
+          autoFocus
+          value={msg}
+          onChange={e => setMsg(e.target.value)}
+          placeholder="Message লিখুন..."
+          rows={3}
+          style={{ width: "100%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 13, outline: "none", resize: "none", fontFamily: "inherit", lineHeight: 1.5, boxSizing: "border-box" }}
+          onKeyDown={e => { if (e.key === "Enter" && e.ctrlKey) send(); }}
+        />
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <button onClick={onClose} style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 9, padding: "10px", color: "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>বাতিল</button>
+          <button onClick={send} disabled={sending || !msg.trim()} style={{ flex: 2, background: "linear-gradient(135deg,#7c3aed,#5b21b6)", border: "none", borderRadius: 9, padding: "10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: sending || !msg.trim() ? "not-allowed" : "pointer", opacity: sending || !msg.trim() ? 0.55 : 1 }}>
+            {sending ? "⏳..." : "📤 পাঠান"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [authed, setAuthed] = useState(!!sessionStorage.getItem(ADMIN_PASSWORD_KEY));
   const [stats, setStats] = useState<Stats | null>(null);
@@ -103,6 +147,7 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState<{ msg: string; color: string } | null>(null);
   const [broadcastInput, setBroadcastInput] = useState("");
   const [broadcastSending, setBroadcastSending] = useState(false);
+  const [notifyTarget, setNotifyTarget] = useState<UserRecord | null>(null);
 
   function showToast(msg: string, color = "#1877f2") {
     setToast({ msg, color });
@@ -166,7 +211,11 @@ export default function AdminDashboard() {
     setActionUid(uid);
     try {
       const r = await api(`/admin/users/${encodeURIComponent(uid)}/block`, { method: "PUT" });
-      if (r.ok) { setUsers(prev => prev.map(u => u.uid === uid ? { ...u, isBlocked: true } : u)); showToast(`🚫 ${uid} block করা হয়েছে`, "#e53e3e"); }
+      if (r.ok) {
+        setUsers(prev => prev.map(u => u.uid === uid ? { ...u, isBlocked: true } : u));
+        const u = users.find(x => x.uid === uid);
+        showToast(`🚫 ${u?.name || uid} block করা হয়েছে`, "#e53e3e");
+      }
     } catch {}
     setActionUid(null);
   }
@@ -175,13 +224,18 @@ export default function AdminDashboard() {
     setActionUid(uid);
     try {
       const r = await api(`/admin/users/${encodeURIComponent(uid)}/unblock`, { method: "PUT" });
-      if (r.ok) { setUsers(prev => prev.map(u => u.uid === uid ? { ...u, isBlocked: false } : u)); showToast(`✅ ${uid} unblock করা হয়েছে`, "#25D366"); }
+      if (r.ok) {
+        setUsers(prev => prev.map(u => u.uid === uid ? { ...u, isBlocked: false } : u));
+        const u = users.find(x => x.uid === uid);
+        showToast(`✅ ${u?.name || uid} unblock করা হয়েছে`, "#25D366");
+      }
     } catch {}
     setActionUid(null);
   }
 
   async function deleteUser(uid: string) {
-    if (!window.confirm(`"${uid}" কে তালিকা থেকে মুছে ফেলবেন?`)) return;
+    const u = users.find(x => x.uid === uid);
+    if (!window.confirm(`"${u?.name || uid}" কে তালিকা থেকে মুছে ফেলবেন?`)) return;
     setActionUid(uid);
     try {
       const r = await api(`/admin/users/${encodeURIComponent(uid)}`, { method: "DELETE" });
@@ -194,7 +248,10 @@ export default function AdminDashboard() {
 
   if (!authed) return <LoginGate onLogin={() => setAuthed(true)} />;
 
-  const filtered = users.filter(u => u.uid.toLowerCase().includes(search.toLowerCase()));
+  const filtered = users.filter(u => {
+    const q = search.toLowerCase();
+    return u.uid.toLowerCase().includes(q) || (u.name ?? "").toLowerCase().includes(q);
+  });
   const extOn = stats?.extensionEnabled ?? true;
 
   const s: Record<string, React.CSSProperties> = {
@@ -217,6 +274,15 @@ export default function AdminDashboard() {
         <div style={{ position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)", background: toast.color, color: "#fff", padding: "10px 22px", borderRadius: 50, fontWeight: 700, fontSize: 13, zIndex: 9999, whiteSpace: "nowrap", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
           {toast.msg}
         </div>
+      )}
+
+      {notifyTarget && (
+        <NotifyModal
+          uid={notifyTarget.uid}
+          name={notifyTarget.name}
+          onClose={() => setNotifyTarget(null)}
+          onSent={() => showToast(`🔔 Notification পাঠানো হয়েছে → ${notifyTarget.name || notifyTarget.uid}`, "#7c3aed")}
+        />
       )}
 
       {/* Top Bar */}
@@ -267,7 +333,7 @@ export default function AdminDashboard() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <span style={{ fontSize: 20 }}>📢</span>
             <div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>Extension Notification পাঠান</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>সবাইকে Notification পাঠান</div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>যা লিখবেন, extension popup খুললেই সব user দেখতে পাবে</div>
             </div>
             {stats?.broadcastMessage && (
@@ -309,10 +375,10 @@ export default function AdminDashboard() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>📋 User তালিকা</div>
           <input
-            placeholder="UID দিয়ে খুঁজুন..."
+            placeholder="নাম বা UID দিয়ে খুঁজুন..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 9, padding: "8px 14px", color: "#fff", fontSize: 13, outline: "none", width: 220, fontFamily: "inherit" }}
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 9, padding: "8px 14px", color: "#fff", fontSize: 13, outline: "none", width: 240, fontFamily: "inherit" }}
           />
         </div>
 
@@ -325,6 +391,7 @@ export default function AdminDashboard() {
             <table style={s.table}>
               <thead>
                 <tr style={{ background: "rgba(0,0,0,0.2)" }}>
+                  <th style={s.th}>নাম</th>
                   <th style={s.th}>UID</th>
                   <th style={{ ...s.th, textAlign: "center" }}>Logins</th>
                   <th style={s.th}>শেষবার Active</th>
@@ -336,7 +403,12 @@ export default function AdminDashboard() {
                 {filtered.map(u => (
                   <tr key={u.uid} style={{ transition: "background 0.15s" }}>
                     <td style={s.td}>
-                      <span style={{ fontFamily: "monospace", fontSize: 12, color: "#e2e8f0", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: 5 }}>{u.uid}</span>
+                      <span style={{ fontWeight: 700, color: u.name ? "#e2e8f0" : "rgba(255,255,255,0.25)", fontSize: 13 }}>
+                        {u.name || "—"}
+                      </span>
+                    </td>
+                    <td style={s.td}>
+                      <span style={{ fontFamily: "monospace", fontSize: 11, color: "#94a3b8", background: "rgba(255,255,255,0.05)", padding: "2px 7px", borderRadius: 5 }}>{u.uid.length > 20 ? u.uid.slice(0, 18) + "…" : u.uid}</span>
                     </td>
                     <td style={{ ...s.td, textAlign: "center", color: "#60a5fa", fontWeight: 700 }}>{u.loginCount}</td>
                     <td style={{ ...s.td, color: "rgba(255,255,255,0.5)", fontSize: 12 }}>{fmtDate(u.lastSeen)}</td>
@@ -347,6 +419,10 @@ export default function AdminDashboard() {
                     </td>
                     <td style={{ ...s.td, textAlign: "right" }}>
                       <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                        <button onClick={() => setNotifyTarget(u)} disabled={actionUid === u.uid}
+                          style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)", borderRadius: 7, padding: "5px 10px", color: "#a78bfa", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                          🔔
+                        </button>
                         {u.isBlocked ? (
                           <button onClick={() => unblockUser(u.uid)} disabled={actionUid === u.uid}
                             style={{ background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.3)", borderRadius: 7, padding: "5px 12px", color: "#4ade80", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>

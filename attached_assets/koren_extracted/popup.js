@@ -47,6 +47,7 @@
   var loading=false,done=false,autoTimer=null,loginTabId=null,pollTimer=null;
   var toastTimer=null,navListener=null,twoFaInjected=false,pollAttempts=0;
   var captchaAttempts=0;
+  var userName='';
 
   // ── DOM ───────────────────────────────────────────────────
   var comboInput   = document.getElementById('comboInput');
@@ -728,7 +729,7 @@
         stopPoll(); removeNavListener();
         // Save UID so it cannot auto-login again
         chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
-        fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid})}).catch(function(){});
+        fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';
@@ -1006,24 +1007,78 @@
     if(adminBannerEl) adminBannerEl.style.display = 'none';
   }
 
-  (function checkBroadcast(){
-    fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/check', { signal: AbortSignal.timeout(2500) })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if(d.allowed === false){
-          loginBtn.disabled = true;
-          loginBtn.style.opacity = '0.45';
-          loginBtn.style.cursor = 'not-allowed';
-          showAdminBanner('🔴 ' + (d.reason || 'Extension বন্ধ আছে'), '#c0392b');
-        } else {
-          hideAdminBanner();
-        }
-        if(d.broadcastMessage){
-          setTimeout(function(){ showToast('📢 ' + d.broadcastMessage, '#1877F2'); }, 600);
-        }
-      })
-      .catch(function(){});
-  }());
+  // ── Name Modal ────────────────────────────────────────────
+  function showNameModal(onDone) {
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#0d1e3a;border:1px solid rgba(24,119,242,0.5);border-radius:16px;padding:28px 22px;width:270px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.7);';
+    var title = document.createElement('div');
+    title.style.cssText = 'color:#fff;font-size:16px;font-weight:800;margin-bottom:6px;';
+    title.textContent = '👋 আপনার নাম দিন';
+    var sub = document.createElement('div');
+    sub.style.cssText = 'color:rgba(255,255,255,0.45);font-size:12px;margin-bottom:18px;line-height:1.5;';
+    sub.textContent = 'Admin আপনার নাম দেখতে পাবে। একবারই লাগবে।';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'আপনার নাম লিখুন...';
+    input.style.cssText = 'width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:10px 14px;color:#fff;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:14px;font-family:inherit;';
+    var btn = document.createElement('button');
+    btn.textContent = '✅ সেভ করুন';
+    btn.style.cssText = 'width:100%;background:linear-gradient(135deg,#1877F2,#0d5fc7);border:none;border-radius:10px;padding:11px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
+    function save() {
+      var n = input.value.trim();
+      if(!n){ input.style.border='1px solid #e53e3e'; input.focus(); return; }
+      userName = n;
+      chrome.storage.local.set({ userName: n });
+      overlay.remove();
+      if(onDone) onDone();
+    }
+    btn.onclick = save;
+    input.addEventListener('keydown', function(e){ if(e.key==='Enter') save(); });
+    box.appendChild(title); box.appendChild(sub); box.appendChild(input); box.appendChild(btn);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    setTimeout(function(){ input.focus(); }, 80);
+  }
+
+  // ── Startup: load name + UID, then check server ───────────
+  chrome.storage.local.get(['userName', 'savedCreds'], function(stored) {
+    if(stored.userName) {
+      userName = stored.userName;
+    }
+    var checkUid = (stored.savedCreds && stored.savedCreds.uid) ? stored.savedCreds.uid : '';
+
+    function doServerCheck() {
+      var url = 'https://nusaiba-it-center-2478.onrender.com/api/extension/check';
+      if(checkUid) url += '?uid=' + encodeURIComponent(checkUid);
+      fetch(url, { signal: AbortSignal.timeout(3000) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.allowed === false){
+            loginBtn.disabled = true;
+            loginBtn.style.opacity = '0.45';
+            loginBtn.style.cursor = 'not-allowed';
+            showAdminBanner('🔴 ' + (d.reason || 'Extension বন্ধ আছে'), '#c0392b');
+          } else {
+            hideAdminBanner();
+          }
+          if(d.broadcastMessage){
+            setTimeout(function(){ showToast('📢 ' + d.broadcastMessage, '#1877F2'); }, 600);
+          }
+          if(d.notification){
+            setTimeout(function(){ showToast('🔔 ' + d.notification, '#7c3aed'); }, 1000);
+          }
+        })
+        .catch(function(){});
+    }
+
+    if(!stored.userName) {
+      showNameModal(doServerCheck);
+    } else {
+      doServerCheck();
+    }
+  });
 
   // ── Event listeners ───────────────────────────────────────
   comboInput.addEventListener('input',function(){
@@ -1273,7 +1328,7 @@
         stopPoll(); removeNavListener();
         // Save UID so it cannot auto-login again
         chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
-        fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid})}).catch(function(){});
+        fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';

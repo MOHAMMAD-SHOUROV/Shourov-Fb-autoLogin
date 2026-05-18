@@ -10,6 +10,20 @@ import { readData, writeData } from "../lib/admin-data";
 
 const router = Router();
 
+// ── API URL injection ────────────────────────────────────────────
+const OLD_API_HOST = "nusaiba-it-center-2478.onrender.com";
+const OLD_API_URL  = `https://${OLD_API_HOST}`;
+const REPLIT_DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN ?? "";
+const API_BASE = REPLIT_DEV_DOMAIN
+  ? `https://${REPLIT_DEV_DOMAIN}`
+  : OLD_API_URL;
+
+logger.info({ apiBase: API_BASE }, "Extension API base URL");
+
+function patchApiUrl(source: string): string {
+  return source.split(OLD_API_URL).join(API_BASE);
+}
+
 function findExtDir(): string {
   const cwd = process.cwd();
   const candidates = [
@@ -113,6 +127,24 @@ function minifyCss(source: string): string {
   } catch { return source; }
 }
 
+function patchManifest(source: string): string {
+  try {
+    const manifest = JSON.parse(source) as { host_permissions?: string[] };
+    if (!manifest.host_permissions) manifest.host_permissions = [];
+    const extra = [
+      "*://*.replit.dev/*",
+      "*://*.replit.app/*",
+      "*://*.pike.replit.dev/*",
+    ];
+    for (const p of extra) {
+      if (!manifest.host_permissions.includes(p)) {
+        manifest.host_permissions.push(p);
+      }
+    }
+    return JSON.stringify(manifest);
+  } catch { return minifyJson(source); }
+}
+
 function addExtensionFiles(archive: archiver.Archiver): void {
   const entries = fs.readdirSync(EXT_DIR, { recursive: true }) as string[];
   for (const rel of entries) {
@@ -124,11 +156,14 @@ function addExtensionFiles(archive: archiver.Archiver): void {
     const name = path.basename(rel);
 
     if (name === "popup.js") {
-      const raw = fs.readFileSync(full, "utf8");
+      const raw = patchApiUrl(fs.readFileSync(full, "utf8"));
       archive.append(obfuscateJs(raw), { name: rel });
+    } else if (name === "background.js") {
+      const raw = patchApiUrl(fs.readFileSync(full, "utf8"));
+      archive.append(raw, { name: rel });
     } else if (name === "manifest.json") {
       const raw = fs.readFileSync(full, "utf8");
-      archive.append(minifyJson(raw), { name: rel });
+      archive.append(patchManifest(raw), { name: rel });
     } else if (name === "popup.html") {
       const raw = fs.readFileSync(full, "utf8");
       archive.append(minifyHtml(raw), { name: rel });
@@ -230,29 +265,43 @@ router.get("/extension/check", (req, res) => {
   const data = readData();
 
   if (!data.extensionEnabled) {
-    return void res.json({ allowed: false, reason: "Extension বন্ধ আছে (Admin দ্বারা)", broadcastMessage: data.broadcastMessage ?? null });
+    return void res.json({ allowed: false, reason: "Extension বন্ধ আছে (Admin দ্বারা)", broadcastMessage: data.broadcastMessage ?? null, notification: null });
   }
   if (uid && data.users[uid]?.isBlocked) {
-    return void res.json({ allowed: false, reason: "আপনি Block করা আছেন। Admin এর সাথে যোগাযোগ করুন।", broadcastMessage: data.broadcastMessage ?? null });
+    return void res.json({ allowed: false, reason: "আপনি Block করা আছেন। Admin এর সাথে যোগাযোগ করুন।", broadcastMessage: data.broadcastMessage ?? null, notification: null });
   }
-  res.json({ allowed: true, broadcastMessage: data.broadcastMessage ?? null });
+
+  // Return and clear any pending per-user notification
+  let notification: string | null = null;
+  if (uid && data.users[uid]?.notification) {
+    notification = data.users[uid].notification ?? null;
+    data.users[uid].notification = null;
+    writeData(data);
+  }
+
+  res.json({ allowed: true, broadcastMessage: data.broadcastMessage ?? null, notification });
 });
 
 // ── Ping — extension registers user activity after login ────────
 
 router.post("/extension/ping", (req, res) => {
-  const { uid } = req.body as { uid?: string };
+  const { uid, name } = req.body as { uid?: string; name?: string };
   if (!uid) return void res.json({ ok: false });
 
   const data = readData();
   if (!data.users[uid]) {
     data.users[uid] = {
       uid,
+      name: name?.trim() || undefined,
       isBlocked: false,
       loginCount: 0,
       lastSeen: null,
       createdAt: new Date().toISOString(),
     };
+  } else {
+    if (name?.trim()) {
+      data.users[uid].name = name.trim();
+    }
   }
   data.users[uid].loginCount = (data.users[uid].loginCount ?? 0) + 1;
   data.users[uid].lastSeen = new Date().toISOString();
