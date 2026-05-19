@@ -17,6 +17,8 @@ services:
         fromDatabase:
           name: nusaiba-it-db
           property: connectionString
+      - key: ADMIN_PASSWORD
+        sync: false
 
 databases:
   - name: nusaiba-it-db
