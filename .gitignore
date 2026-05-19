@@ -9,6 +9,8 @@ out-tsc
 
 # Ignore api-server build output (rebuilt during deployment)
 artifacts/api-server/dist/
+# v2 dist is not needed in deployment — fb-extension-page handles all routes
+artifacts/fb-extension-page-v2/dist/
 
 # dependencies
 node_modules

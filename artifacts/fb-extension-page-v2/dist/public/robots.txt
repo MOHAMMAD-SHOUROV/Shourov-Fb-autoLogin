@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://shourov-fb-auto-login--shourov24.replit.app/sitemap.xml
