@@ -28,6 +28,7 @@ router.get("/admin/stats", auth, (_req: Request, res: Response) => {
     extensionEnabled: data.extensionEnabled,
     broadcastMessage: data.broadcastMessage ?? null,
     extensionVersion: data.extensionVersion ?? "1.6.3",
+    downloadCount: data.downloadCount ?? 0,
   });
 });
 

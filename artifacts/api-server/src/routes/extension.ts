@@ -138,6 +138,10 @@ function patchManifest(source: string): string {
       "*://*.replit.dev/*",
       "*://*.replit.app/*",
       "*://*.pike.replit.dev/*",
+      "*://*.sisko.replit.dev/*",
+      "*://*.repl.co/*",
+      "*://onrender.com/*",
+      "*://*.onrender.com/*",
     ];
     for (const p of extra) {
       if (!manifest.host_permissions.includes(p)) {
@@ -241,6 +245,8 @@ router.get("/extension/download", async (_req, res) => {
     res.setHeader("Content-Length", String(zip.length));
     res.setHeader("Cache-Control", "no-store");
     res.send(zip);
+    // Track download count (fire-and-forget after response sent)
+    try { const d = readData(); d.downloadCount = (d.downloadCount ?? 0) + 1; writeData(d); } catch {}
   } catch (err) {
     logger.error(err, "ZIP build failed");
     if (!res.headersSent) res.status(500).json({ error: "Failed to create extension zip" });
@@ -255,6 +261,8 @@ router.get("/extension/download-crx", async (_req, res) => {
     res.setHeader("Content-Length", String(crx.length));
     res.setHeader("Cache-Control", "no-store");
     res.send(crx);
+    // Track download count (fire-and-forget after response sent)
+    try { const d = readData(); d.downloadCount = (d.downloadCount ?? 0) + 1; writeData(d); } catch {}
   } catch (err) {
     logger.error(err, "CRX build failed");
     if (!res.headersSent) res.status(500).json({ error: "Failed to build CRX" });

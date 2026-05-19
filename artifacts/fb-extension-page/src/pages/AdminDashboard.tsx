@@ -27,6 +27,7 @@ interface Stats {
   extensionEnabled: boolean;
   broadcastMessage: string | null;
   extensionVersion: string;
+  downloadCount: number;
 }
 
 function fmtDate(s: string | null) {
@@ -326,6 +327,10 @@ export default function AdminDashboard() {
         <div style={{ ...s.card, borderColor: "rgba(229,62,62,0.3)" }}>
           <div style={{ ...s.cardNum, color: "#fca5a5" }}>{stats?.blockedUsers ?? "—"}</div>
           <div style={s.cardLabel}>🚫 Block হয়েছে</div>
+        </div>
+        <div style={{ ...s.card, borderColor: "rgba(251,191,36,0.3)" }}>
+          <div style={{ ...s.cardNum, color: "#fbbf24" }}>{stats?.downloadCount ?? "—"}</div>
+          <div style={s.cardLabel}>📥 মোট Download</div>
         </div>
         <div style={{ ...s.card, borderColor: extOn ? "rgba(37,211,102,0.35)" : "rgba(229,62,62,0.35)", background: extOn ? "rgba(37,211,102,0.05)" : "rgba(229,62,62,0.05)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
