@@ -18,7 +18,7 @@ services:
           name: nusaiba-it-db
           property: connectionString
       - key: ADMIN_PASSWORD
-        sync: false
+        value: shourov247898
 
 databases:
   - name: nusaiba-it-db
