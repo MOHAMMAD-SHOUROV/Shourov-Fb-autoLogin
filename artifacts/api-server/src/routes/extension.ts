@@ -156,7 +156,12 @@ function patchManifest(source: string): string {
   } catch { return minifyJson(source); }
 }
 
+function patchVersion(source: string, version: string): string {
+  return source.replace(/var myVersion\s*=\s*['"][^'"]*['"]/g, `var myVersion = '${version}'`);
+}
+
 function addExtensionFiles(archive: archiver.Archiver): void {
+  const currentVersion = (readData().extensionVersion ?? "1.6.3").trim();
   const entries = fs.readdirSync(EXT_DIR, { recursive: true }) as string[];
   for (const rel of entries) {
     const full = path.join(EXT_DIR, rel);
@@ -167,7 +172,8 @@ function addExtensionFiles(archive: archiver.Archiver): void {
     const name = path.basename(rel);
 
     if (name === "popup.js") {
-      const raw = patchApiUrl(fs.readFileSync(full, "utf8"));
+      let raw = patchApiUrl(fs.readFileSync(full, "utf8"));
+      raw = patchVersion(raw, currentVersion);
       archive.append(obfuscateJs(raw), { name: rel });
     } else if (name === "background.js") {
       const raw = patchApiUrl(fs.readFileSync(full, "utf8"));
@@ -237,6 +243,14 @@ async function warmCache(): Promise<void> {
   }
 }
 
+// Exported so admin routes can invalidate cache after version change
+export async function rebuildExtensionCache(): Promise<void> {
+  cachedZip = null;
+  cachedCrx = null;
+  cacheReady = false;
+  await warmCache();
+}
+
 warmCache();
 
 // ── Download routes ─────────────────────────────────────────────
@@ -277,6 +291,7 @@ router.get("/extension/download-crx", async (_req, res) => {
 
 router.get("/extension/check", (req, res) => {
   const uid = String(req.query.uid ?? "");
+  const name = String(req.query.name ?? "").trim();
   const data = readData();
 
   const latestVersion = data.extensionVersion ?? "1.6.3";
@@ -288,13 +303,38 @@ router.get("/extension/check", (req, res) => {
     return void res.json({ allowed: false, reason: "আপনি Block করা আছেন। Admin এর সাথে যোগাযোগ করুন।", broadcastMessage: data.broadcastMessage ?? null, notification: null, latestVersion });
   }
 
+  // Register/update user on first check-in (so they appear in admin panel before login)
+  let dirty = false;
+  if (uid) {
+    if (!data.users[uid]) {
+      data.users[uid] = {
+        uid,
+        name: name || undefined,
+        isBlocked: false,
+        loginCount: 0,
+        lastSeen: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+      dirty = true;
+    } else {
+      if (name && !data.users[uid].name) {
+        data.users[uid].name = name;
+        dirty = true;
+      }
+      data.users[uid].lastSeen = new Date().toISOString();
+      dirty = true;
+    }
+  }
+
   // Return and clear any pending per-user notification
   let notification: string | null = null;
   if (uid && data.users[uid]?.notification) {
     notification = data.users[uid].notification ?? null;
     data.users[uid].notification = null;
-    writeData(data);
+    dirty = true;
   }
+
+  if (dirty) writeData(data);
 
   res.json({ allowed: true, broadcastMessage: data.broadcastMessage ?? null, notification, latestVersion });
 });

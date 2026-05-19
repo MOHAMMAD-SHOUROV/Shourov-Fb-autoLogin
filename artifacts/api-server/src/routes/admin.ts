@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { readData, writeData } from "../lib/admin-data";
+import { rebuildExtensionCache } from "./extension";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "shourov247898";
 const router = Router();
@@ -46,6 +47,8 @@ router.put("/admin/version", auth, (req: Request, res: Response) => {
   data.extensionVersion = version.trim();
   writeData(data);
   res.json({ ok: true, version: data.extensionVersion });
+  // Rebuild extension ZIP/CRX cache so next download has the updated version baked in
+  rebuildExtensionCache().catch(() => {});
 });
 
 router.get("/admin/users", auth, (_req: Request, res: Response) => {

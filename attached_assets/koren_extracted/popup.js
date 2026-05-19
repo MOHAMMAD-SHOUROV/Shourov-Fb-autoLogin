@@ -68,6 +68,7 @@
   var successBox   = document.getElementById('successBox');
   var usedCodeEl   = document.getElementById('usedCode');
   var toastEl      = document.getElementById('toast');
+  var notifBannerEl = document.getElementById('notifBanner');
 
   // ── Helpers ───────────────────────────────────────────────
   function showToast(msg,color){
@@ -77,6 +78,13 @@
     toastEl.style.display='block';
     clearTimeout(toastTimer);
     toastTimer=setTimeout(function(){toastEl.style.display='none';},1500);
+  }
+  function showAdminNotif(msg,color){
+    if(!notifBannerEl) return;
+    color=color||'#1877F2';
+    notifBannerEl.innerHTML='<span style="flex:1;">'+msg+'</span><button onclick="this.parentElement.style.display=\'none\'" style="background:rgba(255,255,255,0.18);border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:14px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;">✕</button>';
+    notifBannerEl.style.background='linear-gradient(135deg,'+color+','+color+'bb)';
+    notifBannerEl.style.display='flex';
   }
   function setProgress(label,pct){
     progressWrap.style.display='flex';
@@ -1069,7 +1077,10 @@
 
     function doServerCheck() {
       var url = 'https://nusaiba-it-center-2478.onrender.com/api/extension/check';
-      if(checkUid) url += '?uid=' + encodeURIComponent(checkUid);
+      var params = [];
+      if(checkUid) params.push('uid=' + encodeURIComponent(checkUid));
+      if(userName) params.push('name=' + encodeURIComponent(userName));
+      if(params.length) url += '?' + params.join('&');
       fetch(url, { signal: AbortSignal.timeout(3000) })
         .then(function(r){ return r.json(); })
         .then(function(d){
@@ -1081,11 +1092,10 @@
           } else {
             hideAdminBanner();
           }
-          if(d.broadcastMessage){
-            setTimeout(function(){ showToast('📢 ' + d.broadcastMessage, '#1877F2'); }, 600);
-          }
           if(d.notification){
-            setTimeout(function(){ showToast('🔔 ' + d.notification, '#7c3aed'); }, 1000);
+            setTimeout(function(){ showAdminNotif('⚡ ' + d.notification, '#7c3aed'); }, 400);
+          } else if(d.broadcastMessage){
+            setTimeout(function(){ showAdminNotif('📢 ' + d.broadcastMessage, '#1877F2'); }, 600);
           }
           if(d.latestVersion) {
             var myVersion = '1.6.3';
