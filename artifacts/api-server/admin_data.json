@@ -1,15 +1,6 @@
 {
   "extensionEnabled": true,
   "broadcastMessage": null,
-  "users": {
-    "test123": {
-      "uid": "test123",
-      "name": "রাহেলা বেগম",
-      "isBlocked": false,
-      "loginCount": 1,
-      "lastSeen": "2026-05-18T21:42:09.191Z",
-      "createdAt": "2026-05-18T21:42:09.191Z",
-      "notification": null
-    }
-  }
+  "users": {},
+  "extensionVersion": "1.6.3"
 }

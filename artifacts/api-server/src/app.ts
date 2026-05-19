@@ -33,14 +33,17 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
-// Static frontend files serve করবে (যদি dist build থাকে)
-const staticDir = path.join(process.cwd(), "artifacts", "fb-extension-page", "dist", "public");
-if (fs.existsSync(staticDir)) {
-  app.use(express.static(staticDir));
-  // SPA fallback — /admin সহ সব non-api route-এ index.html দেবে
-  app.get(/^(?!\/api).*/, (_req, res) => {
-    res.sendFile(path.join(staticDir, "index.html"));
-  });
+// Production-এ static frontend files serve করবে
+// Dev-এ Vite dev server (port 5000) এই কাজ করে
+if (process.env.NODE_ENV === "production") {
+  const staticDir = path.join(process.cwd(), "artifacts", "fb-extension-page", "dist", "public");
+  if (fs.existsSync(staticDir)) {
+    app.use(express.static(staticDir));
+    // SPA fallback — /admin সহ সব non-api route-এ index.html দেবে
+    app.get(/^(?!\/api).*/, (_req, res) => {
+      res.sendFile(path.join(staticDir, "index.html"));
+    });
+  }
 }
 
 export default app;
