@@ -13,13 +13,17 @@ const router = Router();
 // ── API URL injection ────────────────────────────────────────────
 const OLD_API_HOST = "nusaiba-it-center-2478.onrender.com";
 const OLD_API_URL  = `https://${OLD_API_HOST}`;
+const API_BASE_URL     = process.env.API_BASE_URL ?? "";
 const REPLIT_APP_URL   = process.env.REPLIT_APP_URL ?? "";
 const REPLIT_DEV_DOMAIN = process.env.REPLIT_DEV_DOMAIN ?? "";
-const API_BASE = REPLIT_APP_URL
-  ? REPLIT_APP_URL
-  : REPLIT_DEV_DOMAIN
-    ? `https://${REPLIT_DEV_DOMAIN}`
-    : OLD_API_URL;
+// API_BASE_URL takes priority — lets you pin the extension to Render or any domain
+const API_BASE = API_BASE_URL
+  ? API_BASE_URL
+  : REPLIT_APP_URL
+    ? REPLIT_APP_URL
+    : REPLIT_DEV_DOMAIN
+      ? `https://${REPLIT_DEV_DOMAIN}`
+      : OLD_API_URL;
 
 logger.info({ apiBase: API_BASE }, "Extension API base URL");
 

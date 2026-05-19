@@ -101,3 +101,4 @@ REPLIT_APP_URL = "https://shourov-fb-auto-login--shourov24.replit.app"
 
 [userenv.shared]
 ADMIN_PASSWORD = "shourov247898"
+API_BASE_URL = "https://nusaiba-it-center-2478.onrender.com"
