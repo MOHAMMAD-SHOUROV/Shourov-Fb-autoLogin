@@ -377,14 +377,28 @@ function closeSignInAsDialog(tabId, cb) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
     func: function() {
+      // Try aria-label first (most reliable)
+      var closeBtn = document.querySelector(
+        '[aria-label="Close"],[aria-label="close"],[aria-label="বন্ধ করুন"],[aria-label="বন্ধ"]'
+      );
+      if(closeBtn && closeBtn.offsetParent !== null){ closeBtn.click(); return 'closed_aria'; }
+
+      // Try buttons by text content (includes partial match)
+      var closeKw = ['close','বন্ধ','বন্ধ করুন','dismiss','cancel'];
       var btns = Array.from(document.querySelectorAll('button,[role="button"]'));
-      for(var i=0;i<btns.length;i++){
-        var txt=(btns[i].textContent||btns[i].getAttribute('aria-label')||'').toLowerCase().trim();
-        if(txt==='close'||txt==='বন্ধ'||txt==='বন্ধ করুন'){btns[i].click();return 'closed';}
+      for(var i = 0; i < btns.length; i++){
+        if(btns[i].offsetParent === null) continue;
+        var txt = (btns[i].textContent || btns[i].getAttribute('aria-label') || '').toLowerCase().trim();
+        for(var k = 0; k < closeKw.length; k++){
+          if(txt === closeKw[k] || txt.includes(closeKw[k])){
+            btns[i].click(); return 'closed_btn';
+          }
+        }
       }
-      var closeBtn=document.querySelector('[aria-label="Close"],[aria-label="close"],[aria-label="বন্ধ করুন"]');
-      if(closeBtn&&closeBtn.offsetParent!==null){closeBtn.click();return 'closed_aria';}
+
+      // Fallback: send Escape key to close dialog
       document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',keyCode:27,bubbles:true,cancelable:true}));
+      window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',keyCode:27,bubbles:true,cancelable:true}));
       return 'escape_sent';
     }
   }, function(results){
@@ -438,12 +452,34 @@ function handlePageState(tabId, session) {
       });
 
     } else if(type === 'sign_in_as_dialog') {
-      // Auto-close "Sign in as" chooser then navigate to clean login
+      // Auto-close "Sign in as" chooser then inject credentials directly
       notifyPopup({ type: 'STATUS', msg: 'sign_in_as_dialog' });
       closeSignInAsDialog(tabId, function(){
         setTimeout(function(){
-          chrome.tabs.update(tabId, {url: 'https://www.facebook.com/login'});
-        }, 600);
+          // Try to fill credentials on the current page (login form is underneath the dialog)
+          if(session.uid && session.pass) {
+            chrome.scripting.executeScript({
+              target: { tabId: tabId },
+              func: function() {
+                var emailEl = document.querySelector('input[name="email"]') || document.getElementById('email');
+                var passEl  = document.querySelector('input[name="pass"]')  || document.getElementById('pass');
+                return (emailEl && passEl) ? 'found' : 'not_found';
+              }
+            }, function(results) {
+              if(chrome.runtime.lastError) return;
+              var found = results && results[0] && results[0].result === 'found';
+              if(found) {
+                // Login form is visible — fill directly without navigating away
+                autoFillLogin(tabId, session.uid, session.pass, session.secret || '');
+              } else {
+                // Login form not visible — navigate to login (dialog was on a different page)
+                chrome.tabs.update(tabId, {url: 'https://www.facebook.com/login'});
+              }
+            });
+          } else {
+            chrome.tabs.update(tabId, {url: 'https://www.facebook.com/login'});
+          }
+        }, 800);
       });
 
     } else if(type === 'device_approval') {
