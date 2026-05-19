@@ -98,3 +98,6 @@ externalPort = 3003
 
 [userenv.production]
 REPLIT_APP_URL = "https://shourov-fb-auto-login--shourov24.replit.app"
+
+[userenv.shared]
+ADMIN_PASSWORD = "shourov247898"

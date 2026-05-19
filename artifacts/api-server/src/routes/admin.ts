@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { readData, writeData } from "../lib/admin-data";
 
-const ADMIN_PASSWORD = "shourov247898";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "shourov247898";
 const router = Router();
 
 function auth(req: Request, res: Response, next: NextFunction) {
