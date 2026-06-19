@@ -948,6 +948,21 @@
           startPolling(loginTabId);
           handlePageLoad(loginTabId);
         }else if(url.includes('/login')){
+          // If this is the web.facebook.com redirect hop, navigate to the real login page first
+          if(isRedirectHop(url)){
+            setProgress('Login page এ যাচ্ছি...',15);
+            loginBtnText.innerHTML='⏳ Login page এ যাচ্ছি...';
+            chrome.tabs.update(loginTabId,{url:'https://www.facebook.com/login'},function(){
+              chrome.tabs.onUpdated.addListener(function navRdr(id,info,tab){
+                if(id!==loginTabId||info.status!=='complete') return;
+                var rdrUrl=(tab&&tab.url)||'';
+                if(!rdrUrl.includes('facebook.com')) return;
+                chrome.tabs.onUpdated.removeListener(navRdr);
+                setTimeout(function(){ injectLoginForm(loginTabId); },400);
+              });
+            });
+            return;
+          }
           // Check for "Sign in as" first
           setTimeout(function(){
             detectPageType(loginTabId,function(type){
@@ -1117,15 +1132,17 @@
     function save() {
       var n = input.value.trim();
       if(!n){ input.style.border='1px solid #e53e3e'; input.focus(); return; }
-      // Check locally if this name is already used by another saved account
-      chrome.storage.local.get(['savedAccounts'], function(d){
+      // Check locally if this name is already used — if yes, block completely (no override)
+      chrome.storage.local.get(['savedAccounts', 'userName'], function(d){
         var arr = Array.isArray(d.savedAccounts) ? d.savedAccounts : [];
-        var nameUsed = arr.some(function(a){ return a.name && a.name.trim().toLowerCase() === n.toLowerCase(); });
-        if(nameUsed){
-          warnEl.textContent = '⚠️ এই নামটা আগে use হয়েছে! আলাদা নাম দিন বা নিচে চাপুন।';
+        var existingUserName = (d.userName || '').trim().toLowerCase();
+        var nameUsedInAccounts = arr.some(function(a){ return a.name && a.name.trim().toLowerCase() === n.toLowerCase(); });
+        var nameUsedAsUserName = existingUserName && existingUserName === n.toLowerCase();
+        if(nameUsedInAccounts || nameUsedAsUserName){
+          warnEl.textContent = '⚠️ এই নামটা আগে use হয়েছে! অন্য নাম দিন।';
           warnEl.style.display = 'block';
-          btn.textContent = '🔄 তারপরও সেভ করুন';
-          btn.onclick = function(){ doSave(n); };
+          input.style.border = '1px solid #e53e3e';
+          input.focus();
         } else {
           doSave(n);
         }

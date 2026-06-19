@@ -36,6 +36,24 @@ function fmtDate(s: string | null) {
   return d.toLocaleDateString("bn-BD") + " " + d.toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" });
 }
 
+function daysSince(s: string | null): number | null {
+  if (!s) return null;
+  const ms = Date.now() - new Date(s).getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
+
+function InactiveBadge({ lastSeen }: { lastSeen: string | null }) {
+  const days = daysSince(lastSeen);
+  if (days === null) return <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>কখনো use করেনি</span>;
+  if (days === 0) return <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 700 }}>আজকে active</span>;
+  const color = days >= 14 ? "#fca5a5" : days >= 7 ? "#fbbf24" : "#94a3b8";
+  return (
+    <span style={{ fontSize: 11, color, fontWeight: days >= 7 ? 700 : 400 }}>
+      {days} দিন ধরে use করেনি
+    </span>
+  );
+}
+
 function LoginGate({ onLogin }: { onLogin: () => void }) {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState("");
@@ -524,6 +542,8 @@ export default function AdminDashboard() {
                           <span>{g.uids.length} টি ID</span>
                           {" · শেষ: "}
                           <span>{fmtDate(g.lastSeen)}</span>
+                          {" · "}
+                          <InactiveBadge lastSeen={g.lastSeen} />
                         </div>
                       </div>
                       {hasMultiple && (
