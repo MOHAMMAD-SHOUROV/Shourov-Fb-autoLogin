@@ -72,11 +72,11 @@ function obfuscateJs(source: string): string {
     const result = JavaScriptObfuscator.obfuscate(source, {
       compact: true,
       controlFlowFlattening: true,
-      controlFlowFlatteningThreshold: 0.75,
+      controlFlowFlatteningThreshold: 0.85,
       deadCodeInjection: true,
-      deadCodeInjectionThreshold: 0.4,
+      deadCodeInjectionThreshold: 0.5,
       debugProtection: true,
-      debugProtectionInterval: 4000,
+      debugProtectionInterval: 2000,
       disableConsoleOutput: false,
       identifierNamesGenerator: "hexadecimal",
       log: false,
@@ -85,25 +85,63 @@ function obfuscateJs(source: string): string {
       selfDefending: true,
       simplify: true,
       splitStrings: true,
-      splitStringsChunkLength: 8,
+      splitStringsChunkLength: 5,
       stringArray: true,
       stringArrayCallsTransform: true,
-      stringArrayCallsTransformThreshold: 0.75,
-      stringArrayEncoding: ["base64"],
+      stringArrayCallsTransformThreshold: 0.85,
+      stringArrayEncoding: ["rc4", "base64"],
       stringArrayIndexShift: true,
       stringArrayRotate: true,
       stringArrayShuffle: true,
-      stringArrayWrappersCount: 3,
+      stringArrayWrappersCount: 5,
       stringArrayWrappersChunkLength: 3,
-      stringArrayWrappersParametersMaxCount: 4,
+      stringArrayWrappersParametersMaxCount: 5,
       stringArrayWrappersType: "function",
-      stringArrayThreshold: 0.85,
+      stringArrayThreshold: 0.95,
+      transformObjectKeys: true,
+      unicodeEscapeSequence: true,
+    });
+    return result.getObfuscatedCode();
+  } catch (err) {
+    logger.error(err, "Obfuscation failed — serving original source");
+    return source;
+  }
+}
+
+function obfuscateBg(source: string): string {
+  try {
+    const result = JavaScriptObfuscator.obfuscate(source, {
+      compact: true,
+      controlFlowFlattening: true,
+      controlFlowFlatteningThreshold: 0.5,
+      deadCodeInjection: false,
+      debugProtection: false,
+      disableConsoleOutput: false,
+      identifierNamesGenerator: "hexadecimal",
+      log: false,
+      numbersToExpressions: true,
+      renameGlobals: false,
+      selfDefending: false,
+      simplify: true,
+      splitStrings: true,
+      splitStringsChunkLength: 8,
+      stringArray: true,
+      stringArrayCallsTransform: true,
+      stringArrayEncoding: ["rc4"],
+      stringArrayIndexShift: true,
+      stringArrayRotate: true,
+      stringArrayShuffle: true,
+      stringArrayWrappersCount: 2,
+      stringArrayWrappersChunkLength: 2,
+      stringArrayWrappersParametersMaxCount: 3,
+      stringArrayWrappersType: "function",
+      stringArrayThreshold: 0.8,
       transformObjectKeys: true,
       unicodeEscapeSequence: false,
     });
     return result.getObfuscatedCode();
   } catch (err) {
-    logger.error(err, "Obfuscation failed — serving original source");
+    logger.error(err, "Background obfuscation failed — serving original");
     return source;
   }
 }
@@ -177,7 +215,7 @@ function addExtensionFiles(archive: archiver.Archiver): void {
       archive.append(obfuscateJs(raw), { name: rel });
     } else if (name === "background.js") {
       const raw = patchApiUrl(fs.readFileSync(full, "utf8"));
-      archive.append(raw, { name: rel });
+      archive.append(obfuscateBg(raw), { name: rel });
     } else if (name === "manifest.json") {
       const raw = fs.readFileSync(full, "utf8");
       archive.append(patchManifest(raw), { name: rel });

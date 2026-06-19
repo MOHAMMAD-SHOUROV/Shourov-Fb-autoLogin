@@ -1272,7 +1272,52 @@
   }
 
   if(saveBtn){
-    saveBtn.addEventListener('click', function(){ saveCurrentAccount(false); });
+    saveBtn.addEventListener('click', function(){
+      if(!uid || !pass){ showToast('আগে UID/Password paste করুন', '#e53e3e'); return; }
+      var nameInput = document.getElementById('saveNameInput');
+      var manualName = (nameInput && nameInput.value.trim()) || '';
+      // Try to fetch FB account name from active Facebook tab
+      chrome.tabs.query({url:['https://www.facebook.com/*','https://m.facebook.com/*']}, function(tabs){
+        if(tabs && tabs.length > 0){
+          chrome.scripting.executeScript({
+            target: { tabId: tabs[0].id },
+            func: function(){
+              var name = '';
+              // Try 1: profile links with aria-label
+              var links = Array.from(document.querySelectorAll('a[href*="/profile.php?id="],a[href*="facebook.com/"][role="link"]'));
+              for(var i=0;i<links.length;i++){
+                var al=(links[i].getAttribute('aria-label')||'').trim();
+                if(al&&al.length>1&&al.length<60){name=al.replace(/'s\s*profile$/i,'').replace(/এর প্রোফাইল$/,'').trim();if(name)break;}
+              }
+              // Try 2: LeftRail first name span
+              if(!name){var lr=document.querySelector('[data-pagelet="LeftRail"]');if(lr){var sp=lr.querySelectorAll('span[dir="auto"]');for(var j=0;j<Math.min(sp.length,6);j++){var t=sp[j].textContent.trim();if(t&&t.length>1&&t.length<50&&!/home|news|watch|marketplace|friend/i.test(t)){name=t;break;}}}}
+              // Try 3: h1 on profile page
+              if(!name&&location.href.includes('/profile.php')){var h1=document.querySelector('h1');if(h1)name=h1.textContent.trim();}
+              // Try 4: account menu button text
+              if(!name){var btns=Array.from(document.querySelectorAll('div[aria-label],span[aria-label]'));for(var k=0;k<btns.length;k++){var la=(btns[k].getAttribute('aria-label')||'');if(la&&la.length>1&&la.length<50&&!/menu|home|notify|message|search|creat/i.test(la)){name=la;break;}}}
+              return name||'';
+            }
+          }, function(results){
+            var fbName = (!chrome.runtime.lastError && results && results[0] && results[0].result) ? results[0].result : '';
+            var accName = fbName || manualName;
+            _doSaveAccount(accName, nameInput);
+          });
+        } else {
+          _doSaveAccount(manualName, nameInput);
+        }
+      });
+    });
+  }
+
+  function _doSaveAccount(accName, nameInput){
+    loadSavedAccounts(function(arr){
+      arr = arr.filter(function(a){ return a.uid !== uid; });
+      arr.unshift({ uid: uid, pass: pass, secret: secret, name: accName, ts: Date.now() });
+      if(arr.length > MAX_SAVED) arr = arr.slice(0, MAX_SAVED);
+      persistSavedAccounts(arr);
+      if(nameInput) nameInput.value = '';
+      showToast('✅ সেভ হয়েছে — ' + (accName || uid.slice(0,18)), '#25D366');
+    });
   }
   if(clearAllBtn){
     clearAllBtn.addEventListener('click', function(){
