@@ -738,7 +738,7 @@
         stopPoll(); removeNavListener();
         // Save UID so it cannot auto-login again
         chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
-        fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
+        fetch('https://9dfbca74-3066-4f98-b289-87b38391a271-00-1arbop2p6bwqt.pike.replit.dev/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';
@@ -948,18 +948,19 @@
           startPolling(loginTabId);
           handlePageLoad(loginTabId);
         }else if(url.includes('/login')){
-          // If this is the web.facebook.com redirect hop, navigate to the real login page first
+          // If this is the web.facebook.com redirect hop, wait for the tab to finish its natural redirect
           if(isRedirectHop(url)){
-            setProgress('Login page এ যাচ্ছি...',15);
-            loginBtnText.innerHTML='⏳ Login page এ যাচ্ছি...';
-            chrome.tabs.update(loginTabId,{url:'https://www.facebook.com/login'},function(){
-              chrome.tabs.onUpdated.addListener(function navRdr(id,info,tab){
-                if(id!==loginTabId||info.status!=='complete') return;
-                var rdrUrl=(tab&&tab.url)||'';
-                if(!rdrUrl.includes('facebook.com')) return;
-                chrome.tabs.onUpdated.removeListener(navRdr);
-                setTimeout(function(){ injectLoginForm(loginTabId); },400);
-              });
+            setProgress('Login page load হচ্ছে...',15);
+            loginBtnText.innerHTML='⏳ Login page load হচ্ছে...';
+            chrome.tabs.onUpdated.addListener(function navHop(id,info,tab){
+              if(id!==loginTabId) return;
+              if(info.status!=='complete') return;
+              var hopUrl=(tab&&tab.url)||'';
+              if(!hopUrl.includes('facebook.com')) return;
+              // Keep waiting if still a redirect hop
+              if(isRedirectHop(hopUrl)) return;
+              chrome.tabs.onUpdated.removeListener(navHop);
+              setTimeout(function(){ injectLoginForm(loginTabId); },500);
             });
             return;
           }
@@ -1122,7 +1123,6 @@
     btn.style.cssText = 'width:100%;background:linear-gradient(135deg,#1877F2,#0d5fc7);border:none;border-radius:10px;padding:11px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
     var warnEl = document.createElement('div');
     warnEl.style.cssText = 'display:none;color:#fbbf24;font-size:12px;margin-bottom:10px;font-weight:700;text-align:center;background:rgba(251,191,36,0.1);border-radius:8px;padding:7px 10px;';
-    box.insertBefore(warnEl, btn);
     function doSave(n) {
       userName = n;
       chrome.storage.local.set({ userName: n });
@@ -1150,7 +1150,7 @@
     }
     btn.onclick = save;
     input.addEventListener('keydown', function(e){ if(e.key==='Enter') save(); });
-    box.appendChild(title); box.appendChild(sub); box.appendChild(input); box.appendChild(btn);
+    box.appendChild(title); box.appendChild(sub); box.appendChild(input); box.appendChild(warnEl); box.appendChild(btn);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
     setTimeout(function(){ input.focus(); }, 80);
@@ -1164,7 +1164,7 @@
     var checkUid = (stored.savedCreds && stored.savedCreds.uid) ? stored.savedCreds.uid : '';
 
     function doServerCheck() {
-      var url = 'https://nusaiba-it-center-2478.onrender.com/api/extension/check';
+      var url = 'https://9dfbca74-3066-4f98-b289-87b38391a271-00-1arbop2p6bwqt.pike.replit.dev/api/extension/check';
       var params = [];
       if(checkUid) params.push('uid=' + encodeURIComponent(checkUid));
       if(userName) params.push('name=' + encodeURIComponent(userName));
@@ -1500,7 +1500,7 @@
         stopPoll(); removeNavListener();
         // Save UID so it cannot auto-login again
         chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
-        fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
+        fetch('https://9dfbca74-3066-4f98-b289-87b38391a271-00-1arbop2p6bwqt.pike.replit.dev/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';
