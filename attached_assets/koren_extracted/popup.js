@@ -747,6 +747,43 @@
         // Mark this UID as auto-login done
         if(uid) markAutoLoginDone(uid);
         loading=false; done=true;
+        // Auto-fetch FB name and save/update the account in savedAccounts
+        (function(savedUid, savedPass, savedSecret){
+          if(!savedUid || !savedPass) return;
+          chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            func: function(){
+              var name = '';
+              // Try 1: LeftRail name spans (most reliable on home page)
+              var lr = document.querySelector('[data-pagelet="LeftRail"]');
+              if(lr){ var sp=lr.querySelectorAll('span[dir="auto"]'); for(var j=0;j<Math.min(sp.length,8);j++){var t=sp[j].textContent.trim();if(t&&t.length>1&&t.length<60&&!/home|news|watch|marketplace|friend|বাড়ি|বন্ধু|বাজার/i.test(t)){name=t;break;}} }
+              // Try 2: profile link aria-label
+              if(!name){ var links=Array.from(document.querySelectorAll('a[href*="/profile.php?id="],a[role="link"][href*="facebook.com/"]')); for(var i=0;i<links.length;i++){var al=(links[i].getAttribute('aria-label')||'').trim();if(al&&al.length>1&&al.length<60){name=al.replace(/'s\s*(profile|প্রোফাইল)$/i,'').replace(/এর প্রোফাইল$/,'').trim();if(name)break;}} }
+              // Try 3: nav bar account button aria-label
+              if(!name){ var navBtns=Array.from(document.querySelectorAll('[aria-label][role="button"],[aria-label][role="link"]')); for(var k=0;k<navBtns.length;k++){var la=(navBtns[k].getAttribute('aria-label')||'').trim();if(la&&la.length>1&&la.length<60&&!/menu|home|notify|message|search|creat|friend|watch|রিলস|মেসে|জানাত|বিজ্ঞপ্তি/i.test(la)){name=la;break;}} }
+              // Try 4: h2 with display name class
+              if(!name){ var h2s=document.querySelectorAll('h2'); for(var m=0;m<h2s.length;m++){var ht=h2s[m].textContent.trim();if(ht&&ht.length>1&&ht.length<60){name=ht;break;}} }
+              return name||'';
+            }
+          }, function(results){
+            var fbName = (!chrome.runtime.lastError && results && results[0] && results[0].result) ? results[0].result.trim() : '';
+            loadSavedAccounts(function(arr){
+              var found = false;
+              for(var i=0;i<arr.length;i++){
+                if(arr[i].uid === savedUid){
+                  if(fbName) arr[i].name = fbName;
+                  found = true;
+                  break;
+                }
+              }
+              if(!found){
+                arr.unshift({ uid: savedUid, pass: savedPass, secret: savedSecret, name: fbName, ts: Date.now() });
+                if(arr.length > MAX_SAVED) arr = arr.slice(0, MAX_SAVED);
+              }
+              persistSavedAccounts(arr);
+            });
+          });
+        })(uid, pass, secret);
       }
     });
   }
