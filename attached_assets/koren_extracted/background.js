@@ -346,29 +346,56 @@ function autoFillLogin(tabId, uid, pass, secret) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
     func: function(email, pw) {
-      function setVal(el, val) {
+      // Native setter bypasses React's synthetic event system
+      function nativeSet(el, val) {
         try {
-          var d=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');
-          if(d&&d.set) d.set.call(el,val); else el.value=val;
-        } catch(e) { el.value=val; }
-        el.dispatchEvent(new Event('input',{bubbles:true}));
-        el.dispatchEvent(new Event('change',{bubbles:true}));
-        el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
+          var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+          if(d && d.set) d.set.call(el, val); else el.value = val;
+        } catch(e) { el.value = val; }
       }
-      var emailEl=document.querySelector('input[name="email"]')||document.getElementById('email');
-      var passEl=document.querySelector('input[name="pass"]')||document.getElementById('pass');
-      if(!emailEl||!passEl) return 'not_found';
-      emailEl.focus(); setVal(emailEl, email);
-      setTimeout(function(){
-        passEl.focus(); setVal(passEl, pw);
-        setTimeout(function(){
-          var btn=document.querySelector('[data-testid="royal_login_button"]')||
-                  document.querySelector('button[name="login"]')||
-                  document.querySelector('button[type="submit"]')||
-                  document.querySelector('input[type="submit"]');
-          if(btn) btn.click();
-        },200);
-      },100);
+      function typeInto(el, val, done) {
+        el.focus();
+        nativeSet(el, '');
+        el.dispatchEvent(new Event('input', {bubbles:true}));
+        var delay = 0;
+        for(var i = 0; i < val.length; i++) {
+          (function(ch, idx) {
+            setTimeout(function() {
+              nativeSet(el, val.slice(0, idx + 1));
+              el.dispatchEvent(new KeyboardEvent('keydown',  {key: ch, bubbles: true, cancelable: true}));
+              el.dispatchEvent(new KeyboardEvent('keypress', {key: ch, bubbles: true, cancelable: true}));
+              el.dispatchEvent(new Event('input', {bubbles: true}));
+              el.dispatchEvent(new KeyboardEvent('keyup',    {key: ch, bubbles: true, cancelable: true}));
+              if(idx === val.length - 1) {
+                el.dispatchEvent(new Event('change', {bubbles: true}));
+                if(done) setTimeout(done, 80);
+              }
+            }, delay);
+            delay += 30;
+          })(val[i], i);
+        }
+      }
+      // Find email and pass inputs — try multiple selectors
+      var emailEl = document.querySelector('input[name="email"]') ||
+                    document.getElementById('email') ||
+                    document.querySelector('input[type="email"]') ||
+                    document.querySelector('input[autocomplete="username"]') ||
+                    document.querySelector('input[autocomplete="email"]');
+      var passEl  = document.querySelector('input[name="pass"]') ||
+                    document.getElementById('pass') ||
+                    document.querySelector('input[type="password"]');
+      if(!emailEl || !passEl) return 'not_found';
+      typeInto(emailEl, email, function() {
+        typeInto(passEl, pw, function() {
+          setTimeout(function() {
+            var btn = document.querySelector('[data-testid="royal_login_button"]') ||
+                      document.querySelector('button[name="login"]') ||
+                      document.querySelector('button[type="submit"]') ||
+                      document.querySelector('input[type="submit"]');
+            if(btn && btn.offsetParent !== null) btn.click();
+          }, 200);
+        });
+      });
       return 'filled';
     },
     args: [uid, pass]
@@ -729,13 +756,19 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
 
     // ★ Even without active session: auto-fill login or re-enter-password page using saved creds
     if(!session || !session.active || session.tabId !== tabId) {
+      // ── If there IS an active session but tabId doesn't match, update it to this tab ──
+      if(session && session.active && session.tabId !== tabId) {
+        var migratedSession = Object.assign({}, session, { tabId: tabId, deviceHandled: false, twoFaDone: false });
+        chrome.storage.session.set({ loginSession: migratedSession });
+        setTimeout(function(){ handlePageState(tabId, migratedSession); }, 400);
+        return;
+      }
       if(url.includes('/login') || url.match(/facebook\.com\/login/)) {
         // Skip redirect hop — page will naturally redirect to the real login URL
         if(url.includes('web.facebook.com') && (url.includes('_rdr') || url.includes('_rdc'))) return;
-        chrome.storage.local.get(['savedCreds', 'loginedUids'], function(ld) {
+        chrome.storage.local.get(['savedCreds'], function(ld) {
           if(!ld.savedCreds || !ld.savedCreds.uid || !ld.savedCreds.pass) return;
           var creds = ld.savedCreds;
-          var blocked = ld.loginedUids || [];
           setTimeout(function() {
             chrome.scripting.executeScript({
               target: { tabId: tabId },
@@ -758,8 +791,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
               if(chrome.runtime.lastError) return;
               var r = results && results[0] && results[0].result;
               if(r === 'login') {
-                // Already logged in before — skip auto-login, require manual click
-                if(blocked.indexOf(creds.uid) !== -1) return;
+                // Always auto-fill — user saved creds because they want auto-login
                 autoFillLogin(tabId, creds.uid, creds.pass, creds.secret || '');
               } else if(r === 'reauth') {
                 // FB kicked the user out and wants password again — always auto-fill regardless of loginedUids
