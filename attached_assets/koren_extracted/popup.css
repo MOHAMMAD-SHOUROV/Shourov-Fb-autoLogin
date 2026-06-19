@@ -25,3 +25,4 @@
 .save-name-input{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:white;font-size:11px;font-family:inherit;padding:4px 8px;width:90px;outline:none;transition:border-color 0.1s;}
 .save-name-input:focus{border-color:rgba(245,158,11,0.7);}
 .save-name-input::placeholder{color:rgba(255,255,255,0.3);}
+@keyframes glowPulse{0%{box-shadow:0 0 10px currentColor,0 4px 20px rgba(0,0,0,0.4);}50%{box-shadow:0 0 28px currentColor,0 0 50px currentColor,0 4px 20px rgba(0,0,0,0.5);}100%{box-shadow:0 0 10px currentColor,0 4px 20px rgba(0,0,0,0.4);}}

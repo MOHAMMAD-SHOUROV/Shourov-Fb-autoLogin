@@ -1,6 +1,24 @@
 {
   "extensionEnabled": true,
   "broadcastMessage": null,
-  "users": {},
-  "extensionVersion": "1.6.3"
+  "users": {
+    "61585149278186": {
+      "uid": "61585149278186",
+      "name": "ss",
+      "isBlocked": false,
+      "loginCount": 0,
+      "lastSeen": "2026-06-19T14:55:02.904Z",
+      "createdAt": "2026-06-19T14:54:09.421Z"
+    },
+    "61585296091290": {
+      "uid": "61585296091290",
+      "name": "ss",
+      "isBlocked": false,
+      "loginCount": 0,
+      "lastSeen": "2026-06-19T14:56:54.637Z",
+      "createdAt": "2026-06-19T14:55:09.831Z"
+    }
+  },
+  "extensionVersion": "1.6.3",
+  "downloadCount": 0
 }

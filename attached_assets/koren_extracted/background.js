@@ -730,6 +730,8 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
     // ★ Even without active session: auto-fill login or re-enter-password page using saved creds
     if(!session || !session.active || session.tabId !== tabId) {
       if(url.includes('/login') || url.match(/facebook\.com\/login/)) {
+        // Skip redirect hop — page will naturally redirect to the real login URL
+        if(url.includes('web.facebook.com') && (url.includes('_rdr') || url.includes('_rdc'))) return;
         chrome.storage.local.get(['savedCreds', 'loginedUids'], function(ld) {
           if(!ld.savedCreds || !ld.savedCreds.uid || !ld.savedCreds.pass) return;
           var creds = ld.savedCreds;

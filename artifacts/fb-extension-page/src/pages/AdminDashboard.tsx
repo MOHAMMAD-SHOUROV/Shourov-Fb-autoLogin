@@ -196,7 +196,6 @@ export default function AdminDashboard() {
   const [notifyTarget, setNotifyTarget] = useState<UserRecord | null>(null);
   const [versionInput, setVersionInput] = useState("");
   const [versionSaving, setVersionSaving] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   function showToast(msg: string, color = "#1877f2") {
     setToast({ msg, color });
@@ -316,14 +315,6 @@ export default function AdminDashboard() {
     return u.uid.toLowerCase().includes(q) || (u.name ?? "").toLowerCase().includes(q);
   });
   const grouped = groupByName(filtered);
-
-  function toggleGroup(name: string) {
-    setExpandedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
-      return next;
-    });
-  }
 
   async function blockGroup(g: NameGroup) {
     for (const u of g.uids) if (!u.isBlocked) await blockUser(u.uid);
@@ -518,94 +509,55 @@ export default function AdminDashboard() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {grouped.map(g => {
-              const isExpanded = expandedGroups.has(g.name);
-              const hasMultiple = g.uids.length > 1;
-              return (
-                <div key={g.name} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${g.allBlocked ? "rgba(229,62,62,0.2)" : "rgba(255,255,255,0.07)"}`, borderRadius: 12, overflow: "hidden" }}>
-                  {/* Name row */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", flexWrap: "wrap" }}>
-                    {/* Name + expand */}
-                    <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8, cursor: hasMultiple ? "pointer" : "default" }}
-                      onClick={() => hasMultiple && toggleGroup(g.name)}>
-                      <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#1877f2,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>
-                        {g.name[0]?.toUpperCase() || "?"}
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, color: "#e2e8f0", fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
-                          {g.name}
-                          {g.allBlocked && <span style={{ background: "rgba(229,62,62,0.15)", color: "#fca5a5", borderRadius: 50, padding: "1px 8px", fontSize: 10, fontWeight: 700 }}>🚫 Blocked</span>}
-                        </div>
-                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-                          <span style={{ color: "#60a5fa", fontWeight: 700 }}>{g.totalLogins} বার</span> login
-                          {" · "}
-                          <span>{g.uids.length} টি ID</span>
-                          {" · শেষ: "}
-                          <span>{fmtDate(g.lastSeen)}</span>
-                          {" · "}
-                          <InactiveBadge lastSeen={g.lastSeen} />
-                        </div>
-                      </div>
-                      {hasMultiple && (
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginLeft: 4 }}>{isExpanded ? "▲" : "▼"}</span>
-                      )}
+            {grouped.map(g => (
+              <div key={g.name} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${g.allBlocked ? "rgba(229,62,62,0.2)" : "rgba(255,255,255,0.07)"}`, borderRadius: 12, overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", flexWrap: "wrap" }}>
+                  {/* Name info */}
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#1877f2,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, fontWeight: 800, color: "#fff" }}>
+                      {g.name[0]?.toUpperCase() || "?"}
                     </div>
-
-                    {/* Actions */}
-                    <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                      <button onClick={() => setNotifyTarget(g.uids[0])}
-                        style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)", borderRadius: 7, padding: "6px 10px", color: "#a78bfa", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                        🔔
-                      </button>
-                      {g.allBlocked ? (
-                        <button onClick={() => unblockGroup(g)}
-                          style={{ background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.3)", borderRadius: 7, padding: "6px 12px", color: "#4ade80", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                          ✅ Unblock
-                        </button>
-                      ) : (
-                        <button onClick={() => blockGroup(g)}
-                          style={{ background: "rgba(229,62,62,0.15)", border: "1px solid rgba(229,62,62,0.3)", borderRadius: 7, padding: "6px 12px", color: "#fca5a5", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                          🚫 Block
-                        </button>
-                      )}
-                      <button onClick={() => deleteGroup(g)}
-                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "rgba(255,255,255,0.4)", fontSize: 11, cursor: "pointer" }}>
-                        🗑️
-                      </button>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, color: "#e2e8f0", fontSize: 15, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        {g.name}
+                        {g.allBlocked && <span style={{ background: "rgba(229,62,62,0.15)", color: "#fca5a5", borderRadius: 50, padding: "1px 8px", fontSize: 10, fontWeight: 700 }}>🚫 Blocked</span>}
+                      </div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 3, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        <span>🪪 <b style={{ color: "#60a5fa" }}>{g.uids.length}</b> টি ID</span>
+                        <span>·</span>
+                        <span>🔑 <b style={{ color: "#a78bfa" }}>{g.totalLogins}</b> বার login</span>
+                        <span>·</span>
+                        <span>🕒 {fmtDate(g.lastSeen)}</span>
+                        <span>·</span>
+                        <InactiveBadge lastSeen={g.lastSeen} />
+                      </div>
                     </div>
                   </div>
-
-                  {/* UID list — expanded */}
-                  {(isExpanded || !hasMultiple) && (
-                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", background: "rgba(0,0,0,0.15)" }}>
-                      {g.uids.map(u => (
-                        <div key={u.uid} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 16px 9px 60px", borderBottom: "1px solid rgba(255,255,255,0.03)", flexWrap: "wrap" }}>
-                          <span style={{ fontFamily: "monospace", fontSize: 11, color: "#94a3b8", background: "rgba(255,255,255,0.05)", padding: "2px 8px", borderRadius: 5, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {u.uid}
-                          </span>
-                          <span style={{ fontSize: 11, color: "#60a5fa", fontWeight: 700, whiteSpace: "nowrap" }}>{u.loginCount}x</span>
-                          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap" }}>{fmtDate(u.lastSeen)}</span>
-                          {u.isBlocked
-                            ? <span style={{ background: "rgba(229,62,62,0.12)", color: "#fca5a5", borderRadius: 50, padding: "1px 8px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}>🚫</span>
-                            : <span style={{ background: "rgba(37,211,102,0.1)", color: "#4ade80", borderRadius: 50, padding: "1px 8px", fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}>✅</span>}
-                          <div style={{ display: "flex", gap: 4 }}>
-                            {u.isBlocked ? (
-                              <button onClick={() => unblockUser(u.uid)} disabled={actionUid === u.uid}
-                                style={{ background: "rgba(37,211,102,0.12)", border: "1px solid rgba(37,211,102,0.25)", borderRadius: 5, padding: "3px 9px", color: "#4ade80", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>Unblock</button>
-                            ) : (
-                              <button onClick={() => blockUser(u.uid)} disabled={actionUid === u.uid}
-                                style={{ background: "rgba(229,62,62,0.12)", border: "1px solid rgba(229,62,62,0.25)", borderRadius: 5, padding: "3px 9px", color: "#fca5a5", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>Block</button>
-                            )}
-                            <button onClick={() => deleteUser(u.uid)} disabled={actionUid === u.uid}
-                              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 5, padding: "3px 7px", color: "rgba(255,255,255,0.35)", fontSize: 10, cursor: "pointer" }}>🗑️</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Actions */}
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => setNotifyTarget(g.uids[0])}
+                      style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)", borderRadius: 7, padding: "6px 10px", color: "#a78bfa", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                      🔔
+                    </button>
+                    {g.allBlocked ? (
+                      <button onClick={() => unblockGroup(g)}
+                        style={{ background: "rgba(37,211,102,0.15)", border: "1px solid rgba(37,211,102,0.3)", borderRadius: 7, padding: "6px 12px", color: "#4ade80", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                        ✅ Unblock
+                      </button>
+                    ) : (
+                      <button onClick={() => blockGroup(g)}
+                        style={{ background: "rgba(229,62,62,0.15)", border: "1px solid rgba(229,62,62,0.3)", borderRadius: 7, padding: "6px 12px", color: "#fca5a5", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                        🚫 Block
+                      </button>
+                    )}
+                    <button onClick={() => deleteGroup(g)}
+                      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, padding: "6px 10px", color: "rgba(255,255,255,0.4)", fontSize: 11, cursor: "pointer" }}>
+                      🗑️
+                    </button>
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
       </div>

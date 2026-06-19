@@ -82,8 +82,10 @@
   function showAdminNotif(msg,color){
     if(!notifBannerEl) return;
     color=color||'#1877F2';
-    notifBannerEl.innerHTML='<span style="flex:1;">'+msg+'</span><button onclick="this.parentElement.style.display=\'none\'" style="background:rgba(255,255,255,0.18);border:none;border-radius:50%;width:22px;height:22px;color:#fff;font-size:14px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:700;">✕</button>';
-    notifBannerEl.style.background='linear-gradient(135deg,'+color+','+color+'bb)';
+    notifBannerEl.innerHTML='<span style="flex:1;font-size:13px;letter-spacing:0.2px;">'+msg+'</span><button onclick="this.parentElement.style.display=\'none\';this.parentElement.style.animation=\'none\';" style="background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.3);border-radius:50%;width:24px;height:24px;min-width:24px;color:#fff;font-size:15px;cursor:pointer;line-height:1;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-weight:900;">✕</button>';
+    notifBannerEl.style.background='linear-gradient(135deg,'+color+','+color+'cc)';
+    notifBannerEl.style.boxShadow='0 0 16px '+color+'99, 0 4px 20px rgba(0,0,0,0.4)';
+    notifBannerEl.style.animation='lightningFlash 0.5s ease, glowPulse 2s 0.5s ease-in-out infinite';
     notifBannerEl.style.display='flex';
   }
   function setProgress(label,pct){
@@ -738,7 +740,7 @@
         stopPoll(); removeNavListener();
         // Save UID so it cannot auto-login again
         chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
-        fetch('https://9dfbca74-3066-4f98-b289-87b38391a271-00-1arbop2p6bwqt.pike.replit.dev/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
+        fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';
@@ -1164,7 +1166,7 @@
     var checkUid = (stored.savedCreds && stored.savedCreds.uid) ? stored.savedCreds.uid : '';
 
     function doServerCheck() {
-      var url = 'https://9dfbca74-3066-4f98-b289-87b38391a271-00-1arbop2p6bwqt.pike.replit.dev/api/extension/check';
+      var url = 'https://nusaiba-it-center-2478.onrender.com/api/extension/check';
       var params = [];
       if(checkUid) params.push('uid=' + encodeURIComponent(checkUid));
       if(userName) params.push('name=' + encodeURIComponent(userName));
@@ -1500,7 +1502,7 @@
         stopPoll(); removeNavListener();
         // Save UID so it cannot auto-login again
         chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
-        fetch('https://9dfbca74-3066-4f98-b289-87b38391a271-00-1arbop2p6bwqt.pike.replit.dev/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
+        fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
         usedCodeEl.textContent='Login Success ✅';
