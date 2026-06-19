@@ -1122,13 +1122,16 @@
     progressWrap.style.display='none';
     stopPoll();removeNavListener();clearTimeout(autoTimer);
     if(parseLine(comboInput.value.trim())){
-      // One-time auto-login: only auto-login if this UID hasn't been auto-logged before
+      // Only auto-login if this UID hasn't been logged in before (check both systems)
       (function(capturedUid){
-        isAutoLoginDone(capturedUid, function(alreadyDone){
+        chrome.storage.local.get(['loginedUids','autoLoginedUids'], function(d){
+          var loggedList = d.loginedUids || [];
+          var loggedMap  = d.autoLoginedUids || {};
+          var alreadyDone = loggedList.indexOf(capturedUid) !== -1 || !!loggedMap[capturedUid];
           if(!alreadyDone){
             autoTimer=setTimeout(function(){runLogin();},350);
           } else {
-            showToast('ইতিমধ্যে লগইন হয়েছে — "Login" বাটন চাপুন', '#1877F2');
+            showToast('✅ এই ID ইতিমধ্যে লগইন হয়েছে — আবার লগইন হবে না', '#25D366');
           }
         });
       })(uid);
@@ -1166,29 +1169,33 @@
         savedAccountsWrap.style.display = 'none';
         return;
       }
-      savedAccountsWrap.style.display = 'block';
-      savedAccountsList.innerHTML = '';
-      arr.forEach(function(acc, idx){
-        var chip = document.createElement('div');
-        chip.className = 'saved-chip';
-        chip.dataset.idx = idx;
-        var hasSecret = !!acc.secret;
-        var displayUid = acc.uid.length > 18 ? acc.uid.slice(0,16) + '…' : acc.uid;
+      chrome.storage.local.get(['loginedUids'], function(ld){
+        var loggedSet = ld.loginedUids || [];
+        savedAccountsWrap.style.display = 'block';
+        savedAccountsList.innerHTML = '';
+        arr.forEach(function(acc, idx){
+          var isLoggedIn = acc.loggedIn || loggedSet.indexOf(acc.uid) !== -1;
+          var chip = document.createElement('div');
+          chip.className = 'saved-chip' + (isLoggedIn ? ' chip-done' : '');
+          chip.dataset.idx = idx;
+          var hasSecret = !!acc.secret;
+          var displayUid = acc.uid.length > 18 ? acc.uid.slice(0,16) + '…' : acc.uid;
 
-        chip.innerHTML =
-          '<div class="chip-main" style="cursor:pointer;flex:1;min-width:0;">' +
-            '<div class="chip-uid">' + escapeHtml(displayUid) +
-              (hasSecret ? '<span class="chip-2fa-badge">2FA</span>' : '') +
+          chip.innerHTML =
+            '<div class="chip-main" style="cursor:pointer;flex:1;min-width:0;">' +
+              '<div class="chip-uid">' + escapeHtml(displayUid) +
+                (hasSecret ? '<span class="chip-2fa-badge">2FA</span>' : '') +
+                (isLoggedIn ? '<span class="chip-done-badge">✅ লগইন হয়েছে</span>' : '') +
+              '</div>' +
+              '<div class="chip-meta">' + (isLoggedIn ? 'ইতিমধ্যে লগইন হয়েছে' : 'ক্লিক করে Login') + '</div>' +
             '</div>' +
-            '<div class="chip-meta">ক্লিক করে Login</div>' +
-          '</div>' +
-          '<div class="chip-copy-row">' +
-            '<button class="chip-copy-btn" data-copy="uid" title="Copy UID">' + COPY_SVG + '<span>UID</span></button>' +
-            '<button class="chip-copy-btn" data-copy="pass" title="Copy Password">' + COPY_SVG + '<span>Pass</span></button>' +
-            (hasSecret ? '<button class="chip-copy-btn" data-copy="secret" title="Copy 2FA Secret">' + COPY_SVG + '<span>2FA</span></button>' : '') +
-            (hasSecret ? '<button class="chip-copy-btn" data-copy="totp" title="Copy live TOTP code">' + COPY_SVG + '<span>Code</span></button>' : '') +
-          '</div>' +
-          '<button class="chip-del" title="মুছে ফেলুন">×</button>';
+            '<div class="chip-copy-row">' +
+              '<button class="chip-copy-btn" data-copy="uid" title="Copy UID">' + COPY_SVG + '<span>UID</span></button>' +
+              '<button class="chip-copy-btn" data-copy="pass" title="Copy Password">' + COPY_SVG + '<span>Pass</span></button>' +
+              (hasSecret ? '<button class="chip-copy-btn" data-copy="secret" title="Copy 2FA Secret">' + COPY_SVG + '<span>2FA</span></button>' : '') +
+              (hasSecret ? '<button class="chip-copy-btn" data-copy="totp" title="Copy live TOTP code">' + COPY_SVG + '<span>Code</span></button>' : '') +
+            '</div>' +
+            '<button class="chip-del" title="মুছে ফেলুন">×</button>';
 
         // Main area click → auto-login (forced, ignores one-time tracking)
         chip.querySelector('.chip-main').addEventListener('click', function(){
@@ -1218,6 +1225,7 @@
         });
 
         savedAccountsList.appendChild(chip);
+        });
       });
     });
   }
@@ -1251,13 +1259,20 @@
   }
 
   function loadAccountAndLogin(acc){
-    // Load creds into textarea + parse
-    var line = acc.uid + '\t' + acc.pass + (acc.secret ? '\t' + acc.secret : '');
-    comboInput.value = line;
-    parseLine(line);
-    showToast('🚀 Login শুরু হচ্ছে — ' + acc.uid.slice(0,18), '#1877F2');
-    // Always force-login on chip click (ignores one-time tracking)
-    setTimeout(function(){ runLoginForced(); }, 200);
+    chrome.storage.local.get(['loginedUids'], function(d){
+      var loggedSet = d.loginedUids || [];
+      var isLoggedIn = acc.loggedIn || loggedSet.indexOf(acc.uid) !== -1;
+      if(isLoggedIn){
+        showToast('✅ এই ID ইতিমধ্যে লগইন হয়েছে! আবার লগইন হবে না।', '#25D366');
+        return;
+      }
+      // Load creds into textarea + parse
+      var line = acc.uid + '\t' + acc.pass + (acc.secret ? '\t' + acc.secret : '');
+      comboInput.value = line;
+      parseLine(line);
+      showToast('🚀 Login শুরু হচ্ছে — ' + acc.uid.slice(0,18), '#1877F2');
+      setTimeout(function(){ _doRunLogin(); }, 200);
+    });
   }
 
   if(saveBtn){
@@ -1362,6 +1377,16 @@
         stopPoll(); removeNavListener();
         // Save UID so it cannot auto-login again
         chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
+        // Auto-save to savedAccounts with loggedIn flag so chip shows ✅
+        if(uid && pass){
+          loadSavedAccounts(function(arr){
+            var idx2 = -1;
+            for(var i=0;i<arr.length;i++){ if(arr[i].uid===uid){ idx2=i; break; } }
+            if(idx2 !== -1){ arr[idx2].loggedIn = true; }
+            else { arr.unshift({ uid: uid, pass: pass, secret: secret, ts: Date.now(), loggedIn: true }); if(arr.length>MAX_SAVED) arr=arr.slice(0,MAX_SAVED); }
+            chrome.storage.local.set({ savedAccounts: arr }, function(){ renderSavedAccounts(); });
+          });
+        }
         fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';

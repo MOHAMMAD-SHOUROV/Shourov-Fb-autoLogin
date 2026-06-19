@@ -16,3 +16,8 @@
 .chip-copy-btn[data-copy="secret"]:hover{background:rgba(245,158,11,0.5);color:#fff;border-color:#f59e0b;}
 .chip-copy-btn[data-copy="totp"]{background:rgba(37,211,102,0.2);border-color:rgba(37,211,102,0.45);color:#4ade80;}
 .chip-copy-btn[data-copy="totp"]:hover{background:rgba(37,211,102,0.5);color:#fff;border-color:#25D366;}
+
+.chip-done{background:rgba(37,211,102,0.08);border-color:rgba(37,211,102,0.3);}
+.chip-done:hover{background:rgba(37,211,102,0.14);}
+.chip-done-badge{display:inline-block;background:rgba(37,211,102,0.2);color:#4ade80;font-size:8px;font-weight:700;padding:1px 5px;border-radius:50px;margin-left:5px;border:1px solid rgba(37,211,102,0.35);}
+.chip-done .chip-meta{color:#4ade80;}
