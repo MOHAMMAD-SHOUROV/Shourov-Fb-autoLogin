@@ -734,7 +734,6 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
           if(!ld.savedCreds || !ld.savedCreds.uid || !ld.savedCreds.pass) return;
           var creds = ld.savedCreds;
           var blocked = ld.loginedUids || [];
-          if(blocked.indexOf(creds.uid) !== -1) return; // blocked — manual click only
           setTimeout(function() {
             chrome.scripting.executeScript({
               target: { tabId: tabId },
@@ -757,8 +756,11 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
               if(chrome.runtime.lastError) return;
               var r = results && results[0] && results[0].result;
               if(r === 'login') {
+                // Already logged in before — skip auto-login, require manual click
+                if(blocked.indexOf(creds.uid) !== -1) return;
                 autoFillLogin(tabId, creds.uid, creds.pass, creds.secret || '');
               } else if(r === 'reauth') {
+                // FB kicked the user out and wants password again — always auto-fill regardless of loginedUids
                 chrome.scripting.executeScript({
                   target: { tabId: tabId },
                   args: [creds.pass],
