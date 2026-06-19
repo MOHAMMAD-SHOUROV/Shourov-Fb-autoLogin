@@ -828,28 +828,30 @@
       target:{tabId:tabId},
       func:function(email,pw){
         function setVal(el,val){
+          el.focus(); el.click();
           try{
             var d=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');
-            if(d&&d.set)d.set.call(el,val); else el.value=val;
-          }catch(e){el.value=val;}
-          el.dispatchEvent(new Event('input',{bubbles:true}));
+            if(d&&d.set) d.set.call(el,val); else el.value=val;
+          }catch(e){ el.value=val; }
+          if(el._valueTracker) el._valueTracker.setValue('');
+          try{ el.dispatchEvent(new InputEvent('input',{inputType:'insertText',data:val,bubbles:true,cancelable:true})); }catch(e){ el.dispatchEvent(new Event('input',{bubbles:true})); }
           el.dispatchEvent(new Event('change',{bubbles:true}));
           el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
         }
-        var emailEl=document.querySelector('input[name="email"]')||document.getElementById('email');
-        var passEl=document.querySelector('input[name="pass"]')||document.getElementById('pass');
+        var emailEl=document.querySelector('input[name="email"]')||document.getElementById('email')||document.querySelector('input[type="email"]');
+        var passEl=document.querySelector('input[name="pass"]')||document.getElementById('pass')||document.querySelector('input[type="password"]');
         if(!emailEl||!passEl) return 'not_found';
-        emailEl.focus(); setVal(emailEl,email);
+        setVal(emailEl,email);
         setTimeout(function(){
-          passEl.focus(); setVal(passEl,pw);
+          setVal(passEl,pw);
           setTimeout(function(){
             var btn=document.querySelector('[data-testid="royal_login_button"]')||
                     document.querySelector('button[name="login"]')||
                     document.querySelector('button[type="submit"]')||
                     document.querySelector('input[type="submit"]');
             if(btn) btn.click();
-          },200);
-        },100);
+          },300);
+        },150);
         return 'filled';
       },
       args:[uid,pass]

@@ -346,33 +346,21 @@ function autoFillLogin(tabId, uid, pass, secret) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
     func: function(email, pw) {
-      function nativeSet(el, val) {
+      function setVal(el, val) {
+        el.focus(); el.click();
         try {
           var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
           if(d && d.set) d.set.call(el, val); else el.value = val;
         } catch(e) { el.value = val; }
+        if(el._valueTracker) el._valueTracker.setValue('');
+        try { el.dispatchEvent(new InputEvent('input', {inputType:'insertText', data:val, bubbles:true, cancelable:true})); }
+        catch(e) { el.dispatchEvent(new Event('input', {bubbles:true})); }
+        el.dispatchEvent(new Event('change', {bubbles:true}));
+        el.dispatchEvent(new KeyboardEvent('keyup', {bubbles:true}));
       }
       function typeInto(el, val, done) {
-        el.focus();
-        nativeSet(el, '');
-        el.dispatchEvent(new Event('input', {bubbles:true}));
-        var delay = 0;
-        for(var i = 0; i < val.length; i++) {
-          (function(ch, idx) {
-            setTimeout(function() {
-              nativeSet(el, val.slice(0, idx + 1));
-              el.dispatchEvent(new KeyboardEvent('keydown',  {key: ch, bubbles: true, cancelable: true}));
-              el.dispatchEvent(new KeyboardEvent('keypress', {key: ch, bubbles: true, cancelable: true}));
-              el.dispatchEvent(new Event('input', {bubbles: true}));
-              el.dispatchEvent(new KeyboardEvent('keyup',    {key: ch, bubbles: true, cancelable: true}));
-              if(idx === val.length - 1) {
-                el.dispatchEvent(new Event('change', {bubbles: true}));
-                if(done) setTimeout(done, 80);
-              }
-            }, delay);
-            delay += 30;
-          })(val[i], i);
-        }
+        setVal(el, val);
+        if(done) setTimeout(done, 80);
       }
       var emailEl = document.querySelector('input[name="email"]') ||
                     document.getElementById('email') ||
@@ -383,8 +371,8 @@ function autoFillLogin(tabId, uid, pass, secret) {
                     document.getElementById('pass') ||
                     document.querySelector('input[type="password"]');
       if(!emailEl || !passEl) return 'not_found';
-      fillInput(emailEl, email, function() {
-        fillInput(passEl, pw, function() {
+      typeInto(emailEl, email, function() {
+        typeInto(passEl, pw, function() {
           setTimeout(function() {
             var btn = document.querySelector('[data-testid="royal_login_button"]') ||
                       document.querySelector('button[name="login"]') ||
