@@ -1117,7 +1117,19 @@
     function save() {
       var n = input.value.trim();
       if(!n){ input.style.border='1px solid #e53e3e'; input.focus(); return; }
-      doSave(n);
+      // Check locally if this name is already used by another saved account
+      chrome.storage.local.get(['savedAccounts'], function(d){
+        var arr = Array.isArray(d.savedAccounts) ? d.savedAccounts : [];
+        var nameUsed = arr.some(function(a){ return a.name && a.name.trim().toLowerCase() === n.toLowerCase(); });
+        if(nameUsed){
+          warnEl.textContent = '⚠️ এই নামটা আগে use হয়েছে! আলাদা নাম দিন বা নিচে চাপুন।';
+          warnEl.style.display = 'block';
+          btn.textContent = '🔄 তারপরও সেভ করুন';
+          btn.onclick = function(){ doSave(n); };
+        } else {
+          doSave(n);
+        }
+      });
     }
     btn.onclick = save;
     input.addEventListener('keydown', function(e){ if(e.key==='Enter') save(); });
