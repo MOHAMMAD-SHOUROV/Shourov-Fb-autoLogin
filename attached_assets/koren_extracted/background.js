@@ -346,38 +346,28 @@ function inject2FA(tabId, code, cb) {
 function autoFillLogin(tabId, uid, pass, secret) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
-    world: 'MAIN',
     func: function(email, pw) {
-      // Native setter bypasses React's synthetic event system
-      function nativeSet(el, val) {
-        try {
-          var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-          if(d && d.set) d.set.call(el, val); else el.value = val;
-        } catch(e) { el.value = val; }
-      }
-      function typeInto(el, val, done) {
+      function fillInput(el, val, done) {
         el.focus();
-        nativeSet(el, '');
-        el.dispatchEvent(new Event('input', {bubbles:true}));
-        var delay = 0;
-        for(var i = 0; i < val.length; i++) {
-          (function(ch, idx) {
-            setTimeout(function() {
-              nativeSet(el, val.slice(0, idx + 1));
-              el.dispatchEvent(new KeyboardEvent('keydown',  {key: ch, bubbles: true, cancelable: true}));
-              el.dispatchEvent(new KeyboardEvent('keypress', {key: ch, bubbles: true, cancelable: true}));
-              el.dispatchEvent(new Event('input', {bubbles: true}));
-              el.dispatchEvent(new KeyboardEvent('keyup',    {key: ch, bubbles: true, cancelable: true}));
-              if(idx === val.length - 1) {
-                el.dispatchEvent(new Event('change', {bubbles: true}));
-                if(done) setTimeout(done, 80);
-              }
-            }, delay);
-            delay += 30;
-          })(val[i], i);
+        el.click();
+        // Primary: execCommand — browser-native insertion, React sees it naturally
+        var ok = false;
+        try {
+          el.select();
+          document.execCommand('selectAll', false, null);
+          document.execCommand('delete', false, null);
+          ok = document.execCommand('insertText', false, val);
+        } catch(e) {}
+        if(!ok || el.value !== val) {
+          // Fallback: native setter + reset React _valueTracker
+          var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+          if(setter && setter.set) setter.set.call(el, val); else el.value = val;
+          if(el._valueTracker) el._valueTracker.setValue('');
+          el.dispatchEvent(new Event('input', {bubbles:true, cancelable:true}));
+          el.dispatchEvent(new Event('change', {bubbles:true, cancelable:true}));
         }
+        if(done) setTimeout(done, 120);
       }
-      // Find email and pass inputs — try multiple selectors
       var emailEl = document.querySelector('input[name="email"]') ||
                     document.getElementById('email') ||
                     document.querySelector('input[type="email"]') ||
@@ -387,8 +377,8 @@ function autoFillLogin(tabId, uid, pass, secret) {
                     document.getElementById('pass') ||
                     document.querySelector('input[type="password"]');
       if(!emailEl || !passEl) return 'not_found';
-      typeInto(emailEl, email, function() {
-        typeInto(passEl, pw, function() {
+      fillInput(emailEl, email, function() {
+        fillInput(passEl, pw, function() {
           setTimeout(function() {
             var btn = document.querySelector('[data-testid="royal_login_button"]') ||
                       document.querySelector('button[name="login"]') ||
