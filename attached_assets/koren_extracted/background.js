@@ -727,49 +727,56 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
   chrome.storage.session.get(['loginSession'], function(data) {
     var session = data.loginSession;
 
-    // ★ Even without active session: auto-fill re-enter-password page using saved creds
+    // ★ Even without active session: auto-fill login or re-enter-password page using saved creds
     if(!session || !session.active || session.tabId !== tabId) {
       if(url.includes('/login') || url.match(/facebook\.com\/login/)) {
         chrome.storage.local.get(['savedCreds'], function(ld) {
-          if(!ld.savedCreds || !ld.savedCreds.pass) return;
-          var pw = ld.savedCreds.pass;
-          chrome.scripting.executeScript({
-            target: { tabId: tabId },
-            func: function() {
-              var body = (document.body && document.body.innerText || '').toLowerCase();
-              var passInp = document.querySelector('input[type="password"]');
-              var emailInp = document.querySelector('input[name="email"],input[type="email"]');
-              var emailVisible = emailInp && emailInp.offsetParent !== null;
-              if(passInp && passInp.offsetParent !== null && !emailVisible &&
-                (body.includes('enter your password') || body.includes('please enter') ||
-                 body.includes('password to continue') || body.includes('re-enter') ||
-                 body.includes('পাসওয়ার্ড'))) {
-                return 'reauth';
-              }
-              return 'no';
-            }
-          }, function(results) {
-            if(chrome.runtime.lastError) return;
-            var r = results && results[0] && results[0].result;
-            if(r !== 'reauth') return;
+          if(!ld.savedCreds || !ld.savedCreds.uid || !ld.savedCreds.pass) return;
+          var creds = ld.savedCreds;
+          setTimeout(function() {
             chrome.scripting.executeScript({
               target: { tabId: tabId },
-              args: [pw],
-              func: function(password) {
-                var inp = document.querySelector('input[type="password"]');
-                if(!inp || inp.offsetParent === null) return;
-                var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-                nativeSetter.call(inp, password);
-                inp.dispatchEvent(new Event('input', { bubbles: true }));
-                inp.dispatchEvent(new Event('change', { bubbles: true }));
-                setTimeout(function() {
-                  var btn = document.querySelector('button[name="login"],button[type="submit"],input[type="submit"]');
-                  if(!btn) { var btns = Array.from(document.querySelectorAll('button')); for(var i=0;i<btns.length;i++){if(btns[i].offsetParent!==null){btn=btns[i];break;}} }
-                  if(btn) btn.click();
-                }, 600);
+              func: function() {
+                var body = (document.body && document.body.innerText || '').toLowerCase();
+                var passInp = document.querySelector('input[type="password"],input[name="pass"]');
+                var emailInp = document.querySelector('input[name="email"],input[type="email"]');
+                var emailVisible = emailInp && emailInp.offsetParent !== null;
+                var passVisible = passInp && passInp.offsetParent !== null;
+                if(passVisible && emailVisible) return 'login';
+                if(passVisible && !emailVisible &&
+                  (body.includes('enter your password') || body.includes('please enter') ||
+                   body.includes('password to continue') || body.includes('re-enter') ||
+                   body.includes('পাসওয়ার্ড'))) {
+                  return 'reauth';
+                }
+                return 'no';
               }
-            }, function() {});
-          });
+            }, function(results) {
+              if(chrome.runtime.lastError) return;
+              var r = results && results[0] && results[0].result;
+              if(r === 'login') {
+                autoFillLogin(tabId, creds.uid, creds.pass, creds.secret || '');
+              } else if(r === 'reauth') {
+                chrome.scripting.executeScript({
+                  target: { tabId: tabId },
+                  args: [creds.pass],
+                  func: function(password) {
+                    var inp = document.querySelector('input[type="password"]');
+                    if(!inp || inp.offsetParent === null) return;
+                    var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                    nativeSetter.call(inp, password);
+                    inp.dispatchEvent(new Event('input', { bubbles: true }));
+                    inp.dispatchEvent(new Event('change', { bubbles: true }));
+                    setTimeout(function() {
+                      var btn = document.querySelector('button[name="login"],button[type="submit"],input[type="submit"]');
+                      if(!btn) { var btns = Array.from(document.querySelectorAll('button')); for(var i=0;i<btns.length;i++){if(btns[i].offsetParent!==null){btn=btns[i];break;}} }
+                      if(btn) btn.click();
+                    }, 600);
+                  }
+                }, function() {});
+              }
+            });
+          }, 600);
         });
       }
       return;

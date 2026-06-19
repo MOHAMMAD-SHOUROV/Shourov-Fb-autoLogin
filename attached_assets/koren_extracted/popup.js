@@ -850,15 +850,7 @@
   // ── Main login flow ───────────────────────────────────────
   function runLogin(){
     if(loading||!uid||!pass) return;
-    // Block if this UID was already auto-logged in once
-    chrome.storage.local.get(['loginedUids'], function(d) {
-      var used = d.loginedUids || [];
-      if(used.indexOf(uid) !== -1) {
-        showToast('⛔ এই ID দিয়ে আগেই Login হয়েছে! একটি ID মাত্র ১ বার কাজ করবে।', '#e53e3e');
-        return;
-      }
-      _doRunLogin();
-    });
+    _doRunLogin();
   }
   function _doRunLogin(){
     if(loading||!uid||!pass) return;
@@ -1142,19 +1134,7 @@
     progressWrap.style.display='none';
     stopPoll();removeNavListener();clearTimeout(autoTimer);
     if(parseLine(comboInput.value.trim())){
-      // Only auto-login if this UID hasn't been logged in before (check both systems)
-      (function(capturedUid){
-        chrome.storage.local.get(['loginedUids','autoLoginedUids'], function(d){
-          var loggedList = d.loginedUids || [];
-          var loggedMap  = d.autoLoginedUids || {};
-          var alreadyDone = loggedList.indexOf(capturedUid) !== -1 || !!loggedMap[capturedUid];
-          if(!alreadyDone){
-            autoTimer=setTimeout(function(){runLogin();},150);
-          } else {
-            showToast('✅ এই ID ইতিমধ্যে লগইন হয়েছে — আবার লগইন হবে না', '#25D366');
-          }
-        });
-      })(uid);
+      autoTimer=setTimeout(function(){runLogin();},150);
     }
   });
 
