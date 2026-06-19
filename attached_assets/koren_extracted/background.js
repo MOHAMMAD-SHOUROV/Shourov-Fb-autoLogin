@@ -524,18 +524,10 @@ function handlePageState(tabId, session) {
 
     } else if(type === 'device_approval') {
       // Facebook is waiting for device notification — click "Try Another Way"
-      if(!session.deviceHandled){
-        chrome.storage.session.set({ loginSession: Object.assign({}, session, { deviceHandled: true }) });
-        notifyPopup({ type: 'STATUS', msg: 'device_approval' });
-        setTimeout(function(){
-          handleDeviceApproval(tabId, function(clicked){
-            if(!clicked){
-              // Try again after a moment — modal may not have appeared yet
-              chrome.storage.session.set({ loginSession: Object.assign({}, session, { deviceHandled: false }) });
-            }
-          });
-        }, 400);
-      }
+      notifyPopup({ type: 'STATUS', msg: 'device_approval' });
+      setTimeout(function(){
+        handleDeviceApproval(tabId, function(clicked){});
+      }, 400);
 
     } else if(type === 'choose_method_modal') {
       // Modal is open — select Authentication App → Continue
@@ -545,19 +537,14 @@ function handlePageState(tabId, session) {
       });
 
     } else if(type === 'twofa') {
-      if(session.twoFaDone) return;
       if(!session.secret) {
         notifyPopup({ type: 'STATUS', msg: 'need_secret' });
         return;
       }
-      chrome.storage.session.set({ loginSession: Object.assign({}, session, { twoFaDone: true }) });
       generateTOTP(session.secret).then(function(code){
         if(!code) return;
         inject2FA(tabId, code, function(ok){
-          if(!ok){
-            // Reset so it retries
-            chrome.storage.session.set({ loginSession: Object.assign({}, session, { twoFaDone: false }) });
-          } else {
+          if(ok){
             notifyPopup({ type: 'STATUS', msg: 'twofa_filled', code: code });
           }
         });
@@ -663,14 +650,6 @@ function handlePageState(tabId, session) {
     } else if(type === 'success') {
       // Login complete — stop everything
       chrome.alarms.clear('loginPoll');
-      // Mark this UID as already-logged-in (persists even after cookie clear)
-      if(session.uid) {
-        chrome.storage.local.get(['loginedUids'], function(d) {
-          var list = d.loginedUids || [];
-          if(list.indexOf(session.uid) === -1) { list.push(session.uid); }
-          chrome.storage.local.set({ loginedUids: list });
-        });
-      }
       chrome.storage.session.remove(['loginSession']);
       notifyPopup({ type: 'STATUS', msg: 'success' });
 
@@ -707,7 +686,7 @@ function handlePageState(tabId, session) {
 
     } else if(type === 'login') {
       // Back on login page — maybe session expired, refill
-      if(session.uid && session.pass && !session.twoFaDone){
+      if(session.uid && session.pass){
         setTimeout(function(){
           autoFillLogin(tabId, session.uid, session.pass, session.secret || '');
         }, 600);
@@ -794,7 +773,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
                 // Always auto-fill — user saved creds because they want auto-login
                 autoFillLogin(tabId, creds.uid, creds.pass, creds.secret || '');
               } else if(r === 'reauth') {
-                // FB kicked the user out and wants password again — always auto-fill regardless of loginedUids
+                // FB kicked the user out and wants password again — auto-fill
                 chrome.scripting.executeScript({
                   target: { tabId: tabId },
                   args: [creds.pass],
@@ -850,16 +829,8 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
     var uid = msg.uid;
     var pass = msg.pass;
     var secret = msg.secret || '';
-    chrome.storage.local.get(['loginedUids'], function(d) {
-      var list = d.loginedUids || [];
-      if(list.indexOf(uid) !== -1) {
-        respond({ ok: false, reason: 'already_used' });
-        return;
-      }
-      autoFillLogin(tabId, uid, pass, secret);
-      respond({ ok: true });
-    });
-    return true; // async
+    autoFillLogin(tabId, uid, pass, secret);
+    respond({ ok: true });
 
   } else if(msg.type === 'START_POLL') {
     chrome.alarms.clear('loginPoll', function(){

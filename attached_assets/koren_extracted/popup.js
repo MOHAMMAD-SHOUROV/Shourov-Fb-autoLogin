@@ -738,8 +738,6 @@
         });
       }else if(type==='success'){
         stopPoll(); removeNavListener();
-        // Save UID so it cannot auto-login again
-        chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
         fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
@@ -923,13 +921,10 @@
     });
   }
 
-  // Called from manual button / chip click — clears loginedUids block so re-login is always allowed
+  // Called from manual button / chip click
   function runLoginForced(){
     if(!uid || !pass) return;
-    chrome.storage.local.get(['loginedUids'], function(d){
-      var list = (d.loginedUids || []).filter(function(id){ return id !== uid; });
-      chrome.storage.local.set({ loginedUids: list }, function(){ runLogin(); });
-    });
+    runLogin();
   }
 
   var FB_URL_PATTERNS = ['https://www.facebook.com/*','https://m.facebook.com/*','https://web.facebook.com/*'];
@@ -1212,16 +1207,7 @@
     progressWrap.style.display='none';
     stopPoll();removeNavListener();clearTimeout(autoTimer);
     if(parseLine(comboInput.value.trim())){
-      (function(capturedUid){
-        chrome.storage.local.get(['loginedUids'], function(d){
-          var loggedList = d.loginedUids || [];
-          if(loggedList.indexOf(capturedUid) !== -1){
-            showToast('⛔ এই ID আগে login হয়েছে — "Auto Login করুন" চাপুন', '#f59e0b');
-          } else {
-            autoTimer = setTimeout(function(){ runLogin(); }, 150);
-          }
-        });
-      })(uid);
+      autoTimer = setTimeout(function(){ runLogin(); }, 150);
     }
   });
 
@@ -1256,12 +1242,10 @@
         savedAccountsWrap.style.display = 'none';
         return;
       }
-      chrome.storage.local.get(['loginedUids'], function(ld){
-        var loggedSet = ld.loginedUids || [];
-        savedAccountsWrap.style.display = 'block';
-        savedAccountsList.innerHTML = '';
-        arr.forEach(function(acc, idx){
-          var isLoggedIn = acc.loggedIn || loggedSet.indexOf(acc.uid) !== -1;
+      savedAccountsWrap.style.display = 'block';
+      savedAccountsList.innerHTML = '';
+      arr.forEach(function(acc, idx){
+          var isLoggedIn = acc.loggedIn || false;
           var chip = document.createElement('div');
           chip.className = 'saved-chip' + (isLoggedIn ? ' chip-done' : '');
           chip.dataset.idx = idx;
@@ -1313,7 +1297,6 @@
         });
 
         savedAccountsList.appendChild(chip);
-        });
       });
     });
   }
@@ -1500,8 +1483,6 @@
         showToast('Background 2FA কোড '+code+' দিয়েছে ✅','#25D366');
       }else if(m==='success'){
         stopPoll(); removeNavListener();
-        // Save UID so it cannot auto-login again
-        chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
         fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
