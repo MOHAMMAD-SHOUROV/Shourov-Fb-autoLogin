@@ -1117,19 +1117,7 @@
     function save() {
       var n = input.value.trim();
       if(!n){ input.style.border='1px solid #e53e3e'; input.focus(); return; }
-      fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/check-name?name=' + encodeURIComponent(n), { signal: AbortSignal.timeout(2000) })
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          if(d.exists){
-            warnEl.textContent = '⚠️ এই নামটা আগে use হয়েছে! আলাদা নাম দিন বা নিচে চাপুন।';
-            warnEl.style.display = 'block';
-            btn.textContent = '🔄 তারপরও সেভ করুন';
-            btn.onclick = function(){ doSave(n); };
-          } else {
-            doSave(n);
-          }
-        })
-        .catch(function(){ doSave(n); });
+      doSave(n);
     }
     btn.onclick = save;
     input.addEventListener('keydown', function(e){ if(e.key==='Enter') save(); });
