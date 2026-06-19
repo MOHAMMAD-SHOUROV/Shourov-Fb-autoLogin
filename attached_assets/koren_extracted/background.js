@@ -730,9 +730,11 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
     // ★ Even without active session: auto-fill login or re-enter-password page using saved creds
     if(!session || !session.active || session.tabId !== tabId) {
       if(url.includes('/login') || url.match(/facebook\.com\/login/)) {
-        chrome.storage.local.get(['savedCreds'], function(ld) {
+        chrome.storage.local.get(['savedCreds', 'loginedUids'], function(ld) {
           if(!ld.savedCreds || !ld.savedCreds.uid || !ld.savedCreds.pass) return;
           var creds = ld.savedCreds;
+          var blocked = ld.loginedUids || [];
+          if(blocked.indexOf(creds.uid) !== -1) return; // blocked — manual click only
           setTimeout(function() {
             chrome.scripting.executeScript({
               target: { tabId: tabId },

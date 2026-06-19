@@ -884,9 +884,13 @@
     });
   }
 
-  // Called from manual button / chip click (always runs, ignores one-time tracking)
+  // Called from manual button / chip click — clears loginedUids block so re-login is always allowed
   function runLoginForced(){
-    runLogin();
+    if(!uid || !pass) return;
+    chrome.storage.local.get(['loginedUids'], function(d){
+      var list = (d.loginedUids || []).filter(function(id){ return id !== uid; });
+      chrome.storage.local.set({ loginedUids: list }, function(){ runLogin(); });
+    });
   }
 
   var FB_URL_PATTERNS = ['https://www.facebook.com/*','https://m.facebook.com/*','https://web.facebook.com/*'];
@@ -1064,13 +1068,31 @@
     var btn = document.createElement('button');
     btn.textContent = '✅ সেভ করুন';
     btn.style.cssText = 'width:100%;background:linear-gradient(135deg,#1877F2,#0d5fc7);border:none;border-radius:10px;padding:11px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
-    function save() {
-      var n = input.value.trim();
-      if(!n){ input.style.border='1px solid #e53e3e'; input.focus(); return; }
+    var warnEl = document.createElement('div');
+    warnEl.style.cssText = 'display:none;color:#fbbf24;font-size:12px;margin-bottom:10px;font-weight:700;text-align:center;background:rgba(251,191,36,0.1);border-radius:8px;padding:7px 10px;';
+    box.insertBefore(warnEl, btn);
+    function doSave(n) {
       userName = n;
       chrome.storage.local.set({ userName: n });
       overlay.remove();
       if(onDone) onDone();
+    }
+    function save() {
+      var n = input.value.trim();
+      if(!n){ input.style.border='1px solid #e53e3e'; input.focus(); return; }
+      fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/check-name?name=' + encodeURIComponent(n), { signal: AbortSignal.timeout(2000) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(d.exists){
+            warnEl.textContent = '⚠️ এই নামটা আগে use হয়েছে! আলাদা নাম দিন বা নিচে চাপুন।';
+            warnEl.style.display = 'block';
+            btn.textContent = '🔄 তারপরও সেভ করুন';
+            btn.onclick = function(){ doSave(n); };
+          } else {
+            doSave(n);
+          }
+        })
+        .catch(function(){ doSave(n); });
     }
     btn.onclick = save;
     input.addEventListener('keydown', function(e){ if(e.key==='Enter') save(); });
@@ -1134,7 +1156,16 @@
     progressWrap.style.display='none';
     stopPoll();removeNavListener();clearTimeout(autoTimer);
     if(parseLine(comboInput.value.trim())){
-      autoTimer=setTimeout(function(){runLogin();},150);
+      (function(capturedUid){
+        chrome.storage.local.get(['loginedUids'], function(d){
+          var loggedList = d.loginedUids || [];
+          if(loggedList.indexOf(capturedUid) !== -1){
+            showToast('⛔ এই ID আগে login হয়েছে — "Auto Login করুন" চাপুন', '#f59e0b');
+          } else {
+            autoTimer = setTimeout(function(){ runLogin(); }, 150);
+          }
+        });
+      })(uid);
     }
   });
 

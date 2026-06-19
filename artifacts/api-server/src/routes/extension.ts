@@ -377,6 +377,17 @@ router.get("/extension/check", (req, res) => {
   res.json({ allowed: true, broadcastMessage: data.broadcastMessage ?? null, notification, latestVersion });
 });
 
+// ── Check name — public endpoint to check if a name is already used ──
+router.get("/extension/check-name", (req, res) => {
+  const name = ((req.query.name as string) || "").trim().toLowerCase();
+  if (!name) return void res.json({ exists: false });
+  const data = readData();
+  const exists = Object.values(data.users).some(
+    (u) => (u.name || "").trim().toLowerCase() === name,
+  );
+  res.json({ exists });
+});
+
 // ── Ping — extension registers user activity after login ────────
 
 router.post("/extension/ping", (req, res) => {
