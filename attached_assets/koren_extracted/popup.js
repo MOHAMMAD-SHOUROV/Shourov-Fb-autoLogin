@@ -373,10 +373,10 @@
                   }
                   if(!btn) btn=document.querySelector('button[type="submit"],input[type="submit"]');
                   if(btn&&btn.offsetParent!==null) btn.click();
-                },600);
+                },300);
               }
             },delay);
-            delay+=80;
+            delay+=40;
           })(c[k],k);
         }
         return 'injected';
@@ -756,17 +756,17 @@
     removeNavListener();
     navListener=function(id,info){
       if(id!==tabId||info.status!=='complete') return;
-      setTimeout(function(){handlePageLoad(tabId);},600);
+      setTimeout(function(){handlePageLoad(tabId);},300);
     };
     chrome.tabs.onUpdated.addListener(navListener);
   }
 
-  // ── Polling (fallback every 2s) ───────────────────────────
+  // ── Polling (every 1s) ────────────────────────────────────
   function startPolling(tabId){
     stopPoll(); pollAttempts=0;
     pollTimer=setInterval(function(){
       pollAttempts++;
-      if(pollAttempts>40){
+      if(pollAttempts>80){
         stopPoll(); removeNavListener(); loading=false;
         showToast('Timeout — আবার চেষ্টা করুন','#e53e3e');
         loginBtnText.textContent='Auto Login করুন';
@@ -782,7 +782,7 @@
         else if(type==='checkpoint'){handlePageLoad(tabId);}
         else if(type==='success'){handlePageLoad(tabId);}
       });
-    },2000);
+    },1000);
   }
 
   // ── Fill login form and submit ────────────────────────────
@@ -811,8 +811,8 @@
                     document.querySelector('button[type="submit"]')||
                     document.querySelector('input[type="submit"]');
             if(btn) btn.click();
-          },400);
-        },200);
+          },200);
+        },100);
         return 'filled';
       },
       args:[uid,pass]
@@ -827,7 +827,7 @@
               injectLoginForm(tabId);
             }
           });
-        },1500);
+        },700);
         return;
       }
       var res=results&&results[0]&&results[0].result;
@@ -843,7 +843,7 @@
       });
       chrome.runtime.sendMessage({ type: 'START_POLL' }).catch(function(){});
       attachNavListener(tabId);
-      setTimeout(function(){startPolling(tabId);},3000);
+      setTimeout(function(){startPolling(tabId);},1000);
     });
   }
 
@@ -876,7 +876,7 @@
     chrome.storage.session.remove(['loginSession'], function(){
       chrome.storage.local.set({ savedCreds: { uid: currentUid, pass: currentPass, secret: currentSecret } }, function(){
         var SERVER_CHECK = 'https://nusaiba-it-center-2478.onrender.com/api/extension/check';
-        fetch(SERVER_CHECK + '?uid=' + encodeURIComponent(currentUid), { signal: AbortSignal.timeout(2500) })
+        fetch(SERVER_CHECK + '?uid=' + encodeURIComponent(currentUid), { signal: AbortSignal.timeout(1500) })
           .then(function(r){ return r.json(); })
           .then(function(d){
             if(d.allowed === false){
@@ -942,7 +942,7 @@
                     injectLoginForm(loginTabId);
                   }
                 });
-              },800);
+              },400);
             });
           });
         }
@@ -967,7 +967,7 @@
                     injectLoginForm(loginTabId);
                   }
                 });
-              },600);
+              },400);
             });
           });
         });
@@ -1149,7 +1149,7 @@
           var loggedMap  = d.autoLoginedUids || {};
           var alreadyDone = loggedList.indexOf(capturedUid) !== -1 || !!loggedMap[capturedUid];
           if(!alreadyDone){
-            autoTimer=setTimeout(function(){runLogin();},350);
+            autoTimer=setTimeout(function(){runLogin();},150);
           } else {
             showToast('✅ এই ID ইতিমধ্যে লগইন হয়েছে — আবার লগইন হবে না', '#25D366');
           }

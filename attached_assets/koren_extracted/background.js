@@ -367,8 +367,8 @@ function autoFillLogin(tabId, uid, pass, secret) {
                   document.querySelector('button[type="submit"]')||
                   document.querySelector('input[type="submit"]');
           if(btn) btn.click();
-        },400);
-      },250);
+        },200);
+      },100);
       return 'filled';
     },
     args: [uid, pass]
@@ -379,7 +379,7 @@ function autoFillLogin(tabId, uid, pass, secret) {
       loginSession: { active: true, uid: uid, pass: pass, secret: secret, tabId: tabId, twoFaDone: false, deviceHandled: false }
     });
     chrome.alarms.clear('loginPoll', function() {
-      chrome.alarms.create('loginPoll', { periodInMinutes: 0.034 }); // ~2 seconds
+      chrome.alarms.create('loginPoll', { periodInMinutes: 0.017 }); // ~1 second
     });
     notifyPopup({ type: 'AUTO_LOGIN_STARTED', tabId: tabId, uid: uid, pass: pass, secret: secret });
   });
@@ -492,7 +492,7 @@ function handlePageState(tabId, session) {
           } else {
             chrome.tabs.update(tabId, {url: 'https://www.facebook.com/login'});
           }
-        }, 800);
+        }, 400);
       });
 
     } else if(type === 'device_approval') {
@@ -507,7 +507,7 @@ function handlePageState(tabId, session) {
               chrome.storage.session.set({ loginSession: Object.assign({}, session, { deviceHandled: false }) });
             }
           });
-        }, 800);
+        }, 400);
       }
 
     } else if(type === 'choose_method_modal') {
@@ -666,7 +666,7 @@ function handlePageState(tabId, session) {
               var btn = document.querySelector('button[name="login"],button[type="submit"],input[type="submit"],[data-testid="royal_login_button"]');
               if(!btn){ var btns=Array.from(document.querySelectorAll('button')); for(var i=0;i<btns.length;i++){if(btns[i].offsetParent!==null){btn=btns[i];break;}} }
               if(btn) btn.click();
-            }, 500);
+            }, 250);
             return 'filled';
           }
         }, function(){});
@@ -781,7 +781,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
 
     setTimeout(function(){
       handlePageState(tabId, updatedSession);
-    }, 800);
+    }, 400);
   });
 });
 
@@ -818,7 +818,7 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
 
   } else if(msg.type === 'START_POLL') {
     chrome.alarms.clear('loginPoll', function(){
-      chrome.alarms.create('loginPoll', { periodInMinutes: 0.034 });
+      chrome.alarms.create('loginPoll', { periodInMinutes: 0.017 });
     });
     respond({ ok: true });
 
