@@ -350,23 +350,23 @@ function autoFillLogin(tabId, uid, pass, secret) {
       function fillInput(el, val, done) {
         el.focus();
         el.click();
-        // Primary: execCommand — browser-native insertion, React sees it naturally
-        var ok = false;
-        try {
-          el.select();
-          document.execCommand('selectAll', false, null);
-          document.execCommand('delete', false, null);
-          ok = document.execCommand('insertText', false, val);
-        } catch(e) {}
-        if(!ok || el.value !== val) {
-          // Fallback: native setter + reset React _valueTracker
-          var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-          if(setter && setter.set) setter.set.call(el, val); else el.value = val;
-          if(el._valueTracker) el._valueTracker.setValue('');
-          el.dispatchEvent(new Event('input', {bubbles:true, cancelable:true}));
-          el.dispatchEvent(new Event('change', {bubbles:true, cancelable:true}));
+        el.select();
+        document.execCommand('selectAll', false, null);
+        document.execCommand('delete', false, null);
+        var i = 0;
+        function typeNext() {
+          if(i >= val.length) {
+            el.dispatchEvent(new Event('change', {bubbles:true}));
+            if(done) setTimeout(done, 100);
+            return;
+          }
+          var ch = val[i++];
+          el.dispatchEvent(new KeyboardEvent('keydown', {key:ch, bubbles:true, cancelable:true}));
+          document.execCommand('insertText', false, ch);
+          el.dispatchEvent(new KeyboardEvent('keyup', {key:ch, bubbles:true, cancelable:true}));
+          setTimeout(typeNext, 20);
         }
-        if(done) setTimeout(done, 120);
+        typeNext();
       }
       var emailEl = document.querySelector('input[name="email"]') ||
                     document.getElementById('email') ||

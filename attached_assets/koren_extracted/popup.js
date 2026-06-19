@@ -289,7 +289,7 @@
           for(var li=0;li<lIns.length;li++){
             if(lIns[li].offsetParent!==null&&!lIns[li].name.match(/email|pass|user/i)) return 'twofa';
           }
-          return 'unknown';
+          return 'login';
         }
 
         // ⑨ Success — STRICT: require positive home page signals
@@ -800,8 +800,9 @@
   }
 
   // ── Polling (every 1s) ────────────────────────────────────
+  var loginPageRetries=0;
   function startPolling(tabId){
-    stopPoll(); pollAttempts=0;
+    stopPoll(); pollAttempts=0; loginPageRetries=0;
     pollTimer=setInterval(function(){
       pollAttempts++;
       if(pollAttempts>80){
@@ -819,6 +820,13 @@
         else if(type==='recaptcha'&&captchaAttempts===0){handlePageLoad(tabId);}
         else if(type==='checkpoint'){handlePageLoad(tabId);}
         else if(type==='success'){handlePageLoad(tabId);}
+        else if(type==='login'){
+          // Still on login page (fill failed or login rejected) — retry
+          if(loginPageRetries<4){
+            loginPageRetries++;
+            setTimeout(function(){injectLoginForm(tabId);},800);
+          }
+        }
       });
     },1000);
   }
@@ -831,23 +839,25 @@
         function fillInput(el,val,done){
           el.focus();
           el.click();
-          // Primary: execCommand — browser-native insertion, React sees it naturally
-          var ok=false;
-          try{
-            el.select();
-            document.execCommand('selectAll',false,null);
-            document.execCommand('delete',false,null);
-            ok=document.execCommand('insertText',false,val);
-          }catch(e){}
-          if(!ok||el.value!==val){
-            // Fallback: native setter + reset React _valueTracker
-            var setter=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');
-            if(setter&&setter.set) setter.set.call(el,val); else el.value=val;
-            if(el._valueTracker) el._valueTracker.setValue('');
-            el.dispatchEvent(new Event('input',{bubbles:true,cancelable:true}));
-            el.dispatchEvent(new Event('change',{bubbles:true,cancelable:true}));
+          // Clear existing value
+          el.select();
+          document.execCommand('selectAll',false,null);
+          document.execCommand('delete',false,null);
+          // Type character by character via execCommand — most native method
+          var i=0;
+          function typeNext(){
+            if(i>=val.length){
+              el.dispatchEvent(new Event('change',{bubbles:true}));
+              if(done) setTimeout(done,100);
+              return;
+            }
+            var ch=val[i++];
+            el.dispatchEvent(new KeyboardEvent('keydown',{key:ch,bubbles:true,cancelable:true}));
+            document.execCommand('insertText',false,ch);
+            el.dispatchEvent(new KeyboardEvent('keyup',{key:ch,bubbles:true,cancelable:true}));
+            setTimeout(typeNext,20);
           }
-          if(done) setTimeout(done,120);
+          typeNext();
         }
         var emailEl=document.querySelector('input[name="email"]')||
                     document.getElementById('email')||
@@ -865,7 +875,7 @@
                       document.querySelector('button[type="submit"]')||
                       document.querySelector('input[type="submit"]');
               if(btn&&btn.offsetParent!==null) btn.click();
-            },200);
+            },300);
           });
         });
         return 'filled';
