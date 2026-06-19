@@ -319,6 +319,7 @@
   function inject2FA(tabId,code,cb){
     chrome.scripting.executeScript({
       target:{tabId:tabId},
+      world:'MAIN',
       func:function(c){
         var sels=[
           'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
@@ -826,6 +827,7 @@
   function injectLoginForm(tabId){
     chrome.scripting.executeScript({
       target:{tabId:tabId},
+      world:'MAIN',
       func:function(email,pw){
         function nativeSet(el,val){
           try{

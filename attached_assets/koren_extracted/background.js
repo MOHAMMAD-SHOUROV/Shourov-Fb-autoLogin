@@ -274,6 +274,7 @@ function handleChooseMethodModal(tabId, cb) {
 function inject2FA(tabId, code, cb) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
+    world: 'MAIN',
     func: function(c) {
       var sels = [
         'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
@@ -345,6 +346,7 @@ function inject2FA(tabId, code, cb) {
 function autoFillLogin(tabId, uid, pass, secret) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
+    world: 'MAIN',
     func: function(email, pw) {
       // Native setter bypasses React's synthetic event system
       function nativeSet(el, val) {
@@ -660,6 +662,7 @@ function handlePageState(tabId, session) {
       function doFillReauth(pw){
         chrome.scripting.executeScript({
           target: { tabId: tabId },
+          world: 'MAIN',
           args: [pw],
           func: function(password){
             var inp = document.querySelector('input[type="password"][name="pass"],input[type="password"][name="password"],input[type="password"]');
