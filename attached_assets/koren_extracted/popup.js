@@ -618,9 +618,9 @@
               chrome.tabs.onUpdated.addListener(function navL(id,info,tab){
                 if(id!==tabId||info.status!=='complete') return;
                 var tabUrl=(tab&&tab.url)||'';
-                if(isRedirectHop(tabUrl)) return;
+                if(!tabUrl.includes('facebook.com')) return;
                 chrome.tabs.onUpdated.removeListener(navL);
-                setTimeout(function(){injectLoginForm(tabId);},800);
+                setTimeout(function(){injectLoginForm(tabId);},400);
               });
             });
           },600);
@@ -932,7 +932,7 @@
             chrome.tabs.onUpdated.addListener(function navL(id,info,tab){
               if(id!==loginTabId||info.status!=='complete') return;
               var tabUrl=(tab&&tab.url)||'';
-              if(isRedirectHop(tabUrl)) return; // skip the web.facebook.com redirect page
+              if(!tabUrl.includes('facebook.com')) return;
               chrome.tabs.onUpdated.removeListener(navL);
               setTimeout(function(){
                 detectPageType(loginTabId,function(type){
@@ -942,7 +942,7 @@
                     injectLoginForm(loginTabId);
                   }
                 });
-              },400);
+              },300);
             });
           });
         }
@@ -957,7 +957,7 @@
             chrome.tabs.onUpdated.addListener(function navL(id,info,tab){
               if(id!==loginTabId||info.status!=='complete') return;
               var tabUrl=(tab&&tab.url)||'';
-              if(isRedirectHop(tabUrl)) return; // skip the web.facebook.com redirect page
+              if(!tabUrl.includes('facebook.com')) return;
               chrome.tabs.onUpdated.removeListener(navL);
               setTimeout(function(){
                 detectPageType(loginTabId,function(type){
@@ -967,7 +967,7 @@
                     injectLoginForm(loginTabId);
                   }
                 });
-              },400);
+              },300);
             });
           });
         });
