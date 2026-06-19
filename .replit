@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-20", "web", "bash"]
 
 [deployment]
 router = "application"
@@ -102,3 +102,6 @@ REPLIT_APP_URL = "https://shourov-fb-auto-login--shourov24.replit.app"
 [userenv.shared]
 ADMIN_PASSWORD = "shourov247898"
 API_BASE_URL = "https://nusaiba-it-center-2478.onrender.com"
+
+[nix]
+channel = "stable-25_05"
