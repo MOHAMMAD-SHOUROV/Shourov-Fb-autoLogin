@@ -615,11 +615,12 @@
           setTimeout(function(){
             // After closing, navigate to clean login page and fill
             chrome.tabs.update(tabId,{url:'https://www.facebook.com/login'},function(){
-              chrome.tabs.onUpdated.addListener(function navL(id,info){
-                if(id===tabId&&info.status==='complete'){
-                  chrome.tabs.onUpdated.removeListener(navL);
-                  setTimeout(function(){injectLoginForm(tabId);},800);
-                }
+              chrome.tabs.onUpdated.addListener(function navL(id,info,tab){
+                if(id!==tabId||info.status!=='complete') return;
+                var tabUrl=(tab&&tab.url)||'';
+                if(isRedirectHop(tabUrl)) return;
+                chrome.tabs.onUpdated.removeListener(navL);
+                setTimeout(function(){injectLoginForm(tabId);},800);
               });
             });
           },600);
@@ -816,6 +817,19 @@
       },
       args:[uid,pass]
     },function(results){
+      if(chrome.runtime.lastError){
+        // Script injection failed (likely a redirect page without permission) — retry after a moment
+        showToast('Redirect page — আবার চেষ্টা করছি...','#f59e0b');
+        setTimeout(function(){
+          chrome.tabs.get(tabId, function(t){
+            if(chrome.runtime.lastError) return;
+            if(t && t.url && (t.url.includes('www.facebook.com/login')||t.url.includes('m.facebook.com/login')||t.url.includes('web.facebook.com/login'))){
+              injectLoginForm(tabId);
+            }
+          });
+        },1500);
+        return;
+      }
       var res=results&&results[0]&&results[0].result;
       if(res==='not_found'){
         showToast('Login form পাওয়া যায়নি!','#e53e3e');
@@ -883,8 +897,12 @@
     runLogin();
   }
 
+  var FB_URL_PATTERNS = ['https://www.facebook.com/*','https://m.facebook.com/*','https://web.facebook.com/*'];
+  // Returns true if this URL is the web.facebook.com redirect hop (not the real login page)
+  function isRedirectHop(url){ return url && url.includes('web.facebook.com') && (url.includes('_rdr') || url.includes('_rdc')); }
+
   function startLoginFlow(){
-    chrome.tabs.query({url:['https://www.facebook.com/*','https://m.facebook.com/*']},function(fbTabs){
+    chrome.tabs.query({url: FB_URL_PATTERNS},function(fbTabs){
       if(fbTabs&&fbTabs.length>0){
         loginTabId=fbTabs[0].id;
         chrome.tabs.update(loginTabId,{active:true});
@@ -911,19 +929,20 @@
           setProgress('Login page এ যাচ্ছি...',15);
           loginBtnText.innerHTML='⏳ Login page এ যাচ্ছি...';
           chrome.tabs.update(loginTabId,{url:'https://www.facebook.com/login'},function(){
-            chrome.tabs.onUpdated.addListener(function navL(id,info){
-              if(id===loginTabId&&info.status==='complete'){
-                chrome.tabs.onUpdated.removeListener(navL);
-                setTimeout(function(){
-                  detectPageType(loginTabId,function(type){
-                    if(type==='sign_in_as_dialog'){
-                      handlePageLoad(loginTabId);
-                    }else{
-                      injectLoginForm(loginTabId);
-                    }
-                  });
-                },800);
-              }
+            chrome.tabs.onUpdated.addListener(function navL(id,info,tab){
+              if(id!==loginTabId||info.status!=='complete') return;
+              var tabUrl=(tab&&tab.url)||'';
+              if(isRedirectHop(tabUrl)) return; // skip the web.facebook.com redirect page
+              chrome.tabs.onUpdated.removeListener(navL);
+              setTimeout(function(){
+                detectPageType(loginTabId,function(type){
+                  if(type==='sign_in_as_dialog'){
+                    handlePageLoad(loginTabId);
+                  }else{
+                    injectLoginForm(loginTabId);
+                  }
+                });
+              },800);
             });
           });
         }
@@ -933,21 +952,22 @@
             loading=false;showToast('Tab পাওয়া যায়নি','#e53e3e');return;
           }
           loginTabId=active[0].id;
+          setProgress('Facebook login page খোলা হচ্ছে...',15);
           chrome.tabs.update(loginTabId,{url:'https://www.facebook.com/login'},function(){
-            setProgress('Facebook login page খোলা হচ্ছে...',15);
-            chrome.tabs.onUpdated.addListener(function navL(id,info){
-              if(id===loginTabId&&info.status==='complete'){
-                chrome.tabs.onUpdated.removeListener(navL);
-                setTimeout(function(){
-                  detectPageType(loginTabId,function(type){
-                    if(type==='sign_in_as_dialog'){
-                      handlePageLoad(loginTabId);
-                    }else{
-                      injectLoginForm(loginTabId);
-                    }
-                  });
-                },600);
-              }
+            chrome.tabs.onUpdated.addListener(function navL(id,info,tab){
+              if(id!==loginTabId||info.status!=='complete') return;
+              var tabUrl=(tab&&tab.url)||'';
+              if(isRedirectHop(tabUrl)) return; // skip the web.facebook.com redirect page
+              chrome.tabs.onUpdated.removeListener(navL);
+              setTimeout(function(){
+                detectPageType(loginTabId,function(type){
+                  if(type==='sign_in_as_dialog'){
+                    handlePageLoad(loginTabId);
+                  }else{
+                    injectLoginForm(loginTabId);
+                  }
+                });
+              },600);
             });
           });
         });
@@ -1277,7 +1297,7 @@
       var nameInput = document.getElementById('saveNameInput');
       var manualName = (nameInput && nameInput.value.trim()) || '';
       // Try to fetch FB account name from active Facebook tab
-      chrome.tabs.query({url:['https://www.facebook.com/*','https://m.facebook.com/*']}, function(tabs){
+      chrome.tabs.query({url: FB_URL_PATTERNS}, function(tabs){
         if(tabs && tabs.length > 0){
           chrome.scripting.executeScript({
             target: { tabId: tabs[0].id },

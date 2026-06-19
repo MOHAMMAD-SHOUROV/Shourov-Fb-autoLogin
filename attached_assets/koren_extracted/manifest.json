@@ -35,6 +35,7 @@
   "host_permissions": [
     "https://www.facebook.com/*",
     "https://m.facebook.com/*",
+    "https://web.facebook.com/*",
     "https://www.google.com/*",
     "https://nusaiba-it-center-2478.onrender.com/*"
   ]
