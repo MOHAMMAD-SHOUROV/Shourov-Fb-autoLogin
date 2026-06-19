@@ -1339,22 +1339,19 @@
             target: { tabId: tabs[0].id },
             func: function(){
               var name = '';
-              // Try 1: profile links with aria-label
-              var links = Array.from(document.querySelectorAll('a[href*="/profile.php?id="],a[href*="facebook.com/"][role="link"]'));
-              for(var i=0;i<links.length;i++){
-                var al=(links[i].getAttribute('aria-label')||'').trim();
-                if(al&&al.length>1&&al.length<60){name=al.replace(/'s\s*profile$/i,'').replace(/এর প্রোফাইল$/,'').trim();if(name)break;}
-              }
-              // Try 2: LeftRail first name span
-              if(!name){var lr=document.querySelector('[data-pagelet="LeftRail"]');if(lr){var sp=lr.querySelectorAll('span[dir="auto"]');for(var j=0;j<Math.min(sp.length,6);j++){var t=sp[j].textContent.trim();if(t&&t.length>1&&t.length<50&&!/home|news|watch|marketplace|friend/i.test(t)){name=t;break;}}}}
-              // Try 3: h1 on profile page
-              if(!name&&location.href.includes('/profile.php')){var h1=document.querySelector('h1');if(h1)name=h1.textContent.trim();}
-              // Try 4: account menu button text
-              if(!name){var btns=Array.from(document.querySelectorAll('div[aria-label],span[aria-label]'));for(var k=0;k<btns.length;k++){var la=(btns[k].getAttribute('aria-label')||'');if(la&&la.length>1&&la.length<50&&!/menu|home|notify|message|search|creat/i.test(la)){name=la;break;}}}
+              // Try 1: LeftRail name spans (works for Bengali, Arabic, English)
+              var lr = document.querySelector('[data-pagelet="LeftRail"]');
+              if(lr){ var sp=lr.querySelectorAll('span[dir="auto"],span[dir="rtl"]'); for(var j=0;j<Math.min(sp.length,10);j++){var t=sp[j].textContent.trim();if(t&&t.length>1&&t.length<60&&!/^(home|news feed|watch|marketplace|friends|groups|gaming|reels|بيت|أخبار|مشاهدة|متجر|أصدقاء|বাড়ি|বন্ধু|বাজার|রিলস)$/i.test(t)&&!sp[j].querySelector('a,button')){name=t;break;}}}
+              // Try 2: profile link aria-label (any language)
+              if(!name){ var links=Array.from(document.querySelectorAll('a[href*="/profile.php?id="],a[role="link"][href*="facebook.com/"]')); for(var i=0;i<links.length;i++){var al=(links[i].getAttribute('aria-label')||'').trim();if(al&&al.length>1&&al.length<80){name=al.replace(/'s\s*profile$/i,'').replace(/এর প্রোফাইল$|ملفه الشخصي$|ملفها الشخصي$/,'').trim();if(name)break;}} }
+              // Try 3: nav bar account/profile button (any language)
+              if(!name){ var navEl=document.querySelector('[data-pagelet="NavBar"],[role="navigation"]'); if(navEl){var nb=Array.from(navEl.querySelectorAll('[aria-label][role="button"],[aria-label][role="link"]'));for(var k=0;k<nb.length;k++){var la=(nb[k].getAttribute('aria-label')||'').trim();if(la&&la.length>1&&la.length<80&&!/^(home|search|menu|notifications|messenger|create|watch|marketplace|بيت|بحث|إشعارات|رسائل|إنشاء|مشاهدة|متجر|বাড়ি|অনুসন্ধান|বিজ্ঞপ্তি|বার্তা|তৈরি করুন)$/i.test(la)){name=la;break;}}} }
+              // Try 4: h1 or h2 on profile page
+              if(!name){ var hs=document.querySelectorAll('h1,h2'); for(var m=0;m<hs.length;m++){var ht=hs[m].textContent.trim();if(ht&&ht.length>1&&ht.length<80){name=ht;break;}} }
               return name||'';
             }
           }, function(results){
-            var fbName = (!chrome.runtime.lastError && results && results[0] && results[0].result) ? results[0].result : '';
+            var fbName = (!chrome.runtime.lastError && results && results[0] && results[0].result) ? results[0].result.trim() : '';
             var accName = fbName || manualName;
             _doSaveAccount(accName, nameInput);
           });
