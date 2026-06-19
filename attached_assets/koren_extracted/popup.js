@@ -827,29 +827,53 @@
     chrome.scripting.executeScript({
       target:{tabId:tabId},
       func:function(email,pw){
-        function setVal(el,val){
+        function nativeSet(el,val){
           try{
             var d=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');
-            if(d&&d.set)d.set.call(el,val); else el.value=val;
-          }catch(e){el.value=val;}
-          el.dispatchEvent(new Event('input',{bubbles:true}));
-          el.dispatchEvent(new Event('change',{bubbles:true}));
-          el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
+            if(d&&d.set) d.set.call(el,val); else el.value=val;
+          }catch(e){ el.value=val; }
         }
-        var emailEl=document.querySelector('input[name="email"]')||document.getElementById('email');
-        var passEl=document.querySelector('input[name="pass"]')||document.getElementById('pass');
+        function typeInto(el,val,done){
+          el.focus();
+          nativeSet(el,'');
+          el.dispatchEvent(new Event('input',{bubbles:true}));
+          var delay=0;
+          for(var i=0;i<val.length;i++){
+            (function(ch,idx){
+              setTimeout(function(){
+                nativeSet(el,val.slice(0,idx+1));
+                el.dispatchEvent(new KeyboardEvent('keydown', {key:ch,bubbles:true,cancelable:true}));
+                el.dispatchEvent(new KeyboardEvent('keypress',{key:ch,bubbles:true,cancelable:true}));
+                el.dispatchEvent(new Event('input',{bubbles:true}));
+                el.dispatchEvent(new KeyboardEvent('keyup',  {key:ch,bubbles:true,cancelable:true}));
+                if(idx===val.length-1){
+                  el.dispatchEvent(new Event('change',{bubbles:true}));
+                  if(done) setTimeout(done,80);
+                }
+              },delay);
+              delay+=30;
+            })(val[i],i);
+          }
+        }
+        var emailEl=document.querySelector('input[name="email"]')||
+                    document.getElementById('email')||
+                    document.querySelector('input[type="email"]')||
+                    document.querySelector('input[autocomplete="username"]');
+        var passEl=document.querySelector('input[name="pass"]')||
+                   document.getElementById('pass')||
+                   document.querySelector('input[type="password"]');
         if(!emailEl||!passEl) return 'not_found';
-        emailEl.focus(); setVal(emailEl,email);
-        setTimeout(function(){
-          passEl.focus(); setVal(passEl,pw);
-          setTimeout(function(){
-            var btn=document.querySelector('[data-testid="royal_login_button"]')||
-                    document.querySelector('button[name="login"]')||
-                    document.querySelector('button[type="submit"]')||
-                    document.querySelector('input[type="submit"]');
-            if(btn) btn.click();
-          },200);
-        },100);
+        typeInto(emailEl,email,function(){
+          typeInto(passEl,pw,function(){
+            setTimeout(function(){
+              var btn=document.querySelector('[data-testid="royal_login_button"]')||
+                      document.querySelector('button[name="login"]')||
+                      document.querySelector('button[type="submit"]')||
+                      document.querySelector('input[type="submit"]');
+              if(btn&&btn.offsetParent!==null) btn.click();
+            },200);
+          });
+        });
         return 'filled';
       },
       args:[uid,pass]
