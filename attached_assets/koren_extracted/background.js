@@ -274,7 +274,6 @@ function handleChooseMethodModal(tabId, cb) {
 function inject2FA(tabId, code, cb) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
-    world: 'MAIN',
     func: function(c) {
       var sels = [
         'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
@@ -347,26 +346,33 @@ function autoFillLogin(tabId, uid, pass, secret) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
     func: function(email, pw) {
-      function fillInput(el, val, done) {
+      function nativeSet(el, val) {
+        try {
+          var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+          if(d && d.set) d.set.call(el, val); else el.value = val;
+        } catch(e) { el.value = val; }
+      }
+      function typeInto(el, val, done) {
         el.focus();
-        el.click();
-        el.select();
-        document.execCommand('selectAll', false, null);
-        document.execCommand('delete', false, null);
-        var i = 0;
-        function typeNext() {
-          if(i >= val.length) {
-            el.dispatchEvent(new Event('change', {bubbles:true}));
-            if(done) setTimeout(done, 100);
-            return;
-          }
-          var ch = val[i++];
-          el.dispatchEvent(new KeyboardEvent('keydown', {key:ch, bubbles:true, cancelable:true}));
-          document.execCommand('insertText', false, ch);
-          el.dispatchEvent(new KeyboardEvent('keyup', {key:ch, bubbles:true, cancelable:true}));
-          setTimeout(typeNext, 20);
+        nativeSet(el, '');
+        el.dispatchEvent(new Event('input', {bubbles:true}));
+        var delay = 0;
+        for(var i = 0; i < val.length; i++) {
+          (function(ch, idx) {
+            setTimeout(function() {
+              nativeSet(el, val.slice(0, idx + 1));
+              el.dispatchEvent(new KeyboardEvent('keydown',  {key: ch, bubbles: true, cancelable: true}));
+              el.dispatchEvent(new KeyboardEvent('keypress', {key: ch, bubbles: true, cancelable: true}));
+              el.dispatchEvent(new Event('input', {bubbles: true}));
+              el.dispatchEvent(new KeyboardEvent('keyup',    {key: ch, bubbles: true, cancelable: true}));
+              if(idx === val.length - 1) {
+                el.dispatchEvent(new Event('change', {bubbles: true}));
+                if(done) setTimeout(done, 80);
+              }
+            }, delay);
+            delay += 30;
+          })(val[i], i);
         }
-        typeNext();
       }
       var emailEl = document.querySelector('input[name="email"]') ||
                     document.getElementById('email') ||
@@ -652,7 +658,6 @@ function handlePageState(tabId, session) {
       function doFillReauth(pw){
         chrome.scripting.executeScript({
           target: { tabId: tabId },
-          world: 'MAIN',
           args: [pw],
           func: function(password){
             var inp = document.querySelector('input[type="password"][name="pass"],input[type="password"][name="password"],input[type="password"]');

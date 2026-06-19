@@ -289,7 +289,7 @@
           for(var li=0;li<lIns.length;li++){
             if(lIns[li].offsetParent!==null&&!lIns[li].name.match(/email|pass|user/i)) return 'twofa';
           }
-          return 'login';
+          return 'unknown';
         }
 
         // ⑨ Success — STRICT: require positive home page signals
@@ -319,7 +319,6 @@
   function inject2FA(tabId,code,cb){
     chrome.scripting.executeScript({
       target:{tabId:tabId},
-      world:'MAIN',
       func:function(c){
         var sels=[
           'input[name="approvals_code"]','input[name="mfa_code"]','input[name="code"]',
@@ -800,9 +799,8 @@
   }
 
   // ── Polling (every 1s) ────────────────────────────────────
-  var loginPageRetries=0;
   function startPolling(tabId){
-    stopPoll(); pollAttempts=0; loginPageRetries=0;
+    stopPoll(); pollAttempts=0;
     pollTimer=setInterval(function(){
       pollAttempts++;
       if(pollAttempts>80){
@@ -820,13 +818,6 @@
         else if(type==='recaptcha'&&captchaAttempts===0){handlePageLoad(tabId);}
         else if(type==='checkpoint'){handlePageLoad(tabId);}
         else if(type==='success'){handlePageLoad(tabId);}
-        else if(type==='login'){
-          // Still on login page (fill failed or login rejected) — retry
-          if(loginPageRetries<4){
-            loginPageRetries++;
-            setTimeout(function(){injectLoginForm(tabId);},800);
-          }
-        }
       });
     },1000);
   }
@@ -836,48 +827,29 @@
     chrome.scripting.executeScript({
       target:{tabId:tabId},
       func:function(email,pw){
-        function fillInput(el,val,done){
-          el.focus();
-          el.click();
-          // Clear existing value
-          el.select();
-          document.execCommand('selectAll',false,null);
-          document.execCommand('delete',false,null);
-          // Type character by character via execCommand — most native method
-          var i=0;
-          function typeNext(){
-            if(i>=val.length){
-              el.dispatchEvent(new Event('change',{bubbles:true}));
-              if(done) setTimeout(done,100);
-              return;
-            }
-            var ch=val[i++];
-            el.dispatchEvent(new KeyboardEvent('keydown',{key:ch,bubbles:true,cancelable:true}));
-            document.execCommand('insertText',false,ch);
-            el.dispatchEvent(new KeyboardEvent('keyup',{key:ch,bubbles:true,cancelable:true}));
-            setTimeout(typeNext,20);
-          }
-          typeNext();
+        function setVal(el,val){
+          try{
+            var d=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');
+            if(d&&d.set)d.set.call(el,val); else el.value=val;
+          }catch(e){el.value=val;}
+          el.dispatchEvent(new Event('input',{bubbles:true}));
+          el.dispatchEvent(new Event('change',{bubbles:true}));
+          el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
         }
-        var emailEl=document.querySelector('input[name="email"]')||
-                    document.getElementById('email')||
-                    document.querySelector('input[type="email"]')||
-                    document.querySelector('input[autocomplete="username"]');
-        var passEl=document.querySelector('input[name="pass"]')||
-                   document.getElementById('pass')||
-                   document.querySelector('input[type="password"]');
+        var emailEl=document.querySelector('input[name="email"]')||document.getElementById('email');
+        var passEl=document.querySelector('input[name="pass"]')||document.getElementById('pass');
         if(!emailEl||!passEl) return 'not_found';
-        fillInput(emailEl,email,function(){
-          fillInput(passEl,pw,function(){
-            setTimeout(function(){
-              var btn=document.querySelector('[data-testid="royal_login_button"]')||
-                      document.querySelector('button[name="login"]')||
-                      document.querySelector('button[type="submit"]')||
-                      document.querySelector('input[type="submit"]');
-              if(btn&&btn.offsetParent!==null) btn.click();
-            },300);
-          });
-        });
+        emailEl.focus(); setVal(emailEl,email);
+        setTimeout(function(){
+          passEl.focus(); setVal(passEl,pw);
+          setTimeout(function(){
+            var btn=document.querySelector('[data-testid="royal_login_button"]')||
+                    document.querySelector('button[name="login"]')||
+                    document.querySelector('button[type="submit"]')||
+                    document.querySelector('input[type="submit"]');
+            if(btn) btn.click();
+          },200);
+        },100);
         return 'filled';
       },
       args:[uid,pass]
