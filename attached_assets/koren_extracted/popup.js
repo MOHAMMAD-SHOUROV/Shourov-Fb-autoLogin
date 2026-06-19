@@ -1181,13 +1181,14 @@
           var hasSecret = !!acc.secret;
           var displayUid = acc.uid.length > 18 ? acc.uid.slice(0,16) + '…' : acc.uid;
 
+          var displayName = acc.name ? escapeHtml(acc.name) : displayUid;
           chip.innerHTML =
             '<div class="chip-main" style="cursor:pointer;flex:1;min-width:0;">' +
-              '<div class="chip-uid">' + escapeHtml(displayUid) +
+              '<div class="chip-uid">' + displayName +
                 (hasSecret ? '<span class="chip-2fa-badge">2FA</span>' : '') +
-                (isLoggedIn ? '<span class="chip-done-badge">✅ লগইন হয়েছে</span>' : '') +
+                (isLoggedIn ? '<span class="chip-done-badge">✅ Done</span>' : '') +
               '</div>' +
-              '<div class="chip-meta">' + (isLoggedIn ? 'ইতিমধ্যে লগইন হয়েছে' : 'ক্লিক করে Login') + '</div>' +
+              '<div class="chip-meta">' + escapeHtml(displayUid) + '</div>' +
             '</div>' +
             '<div class="chip-copy-row">' +
               '<button class="chip-copy-btn" data-copy="uid" title="Copy UID">' + COPY_SVG + '<span>UID</span></button>' +
@@ -1241,12 +1242,15 @@
       if(!silent) showToast('আগে UID/Password paste করুন', '#e53e3e');
       return;
     }
+    var nameInput = document.getElementById('saveNameInput');
+    var accName = (nameInput && nameInput.value.trim()) || '';
     loadSavedAccounts(function(arr){
       arr = arr.filter(function(a){ return a.uid !== uid; });
-      arr.unshift({ uid: uid, pass: pass, secret: secret, ts: Date.now() });
+      arr.unshift({ uid: uid, pass: pass, secret: secret, name: accName, ts: Date.now() });
       if(arr.length > MAX_SAVED) arr = arr.slice(0, MAX_SAVED);
       persistSavedAccounts(arr);
-      if(!silent) showToast('✅ ID সেভ হয়েছে — ' + uid.slice(0,18), '#25D366');
+      if(nameInput) nameInput.value = '';
+      if(!silent) showToast('✅ সেভ হয়েছে — ' + (accName || uid.slice(0,18)), '#25D366');
     });
   }
 
@@ -1259,20 +1263,12 @@
   }
 
   function loadAccountAndLogin(acc){
-    chrome.storage.local.get(['loginedUids'], function(d){
-      var loggedSet = d.loginedUids || [];
-      var isLoggedIn = acc.loggedIn || loggedSet.indexOf(acc.uid) !== -1;
-      if(isLoggedIn){
-        showToast('✅ এই ID ইতিমধ্যে লগইন হয়েছে! আবার লগইন হবে না।', '#25D366');
-        return;
-      }
-      // Load creds into textarea + parse
-      var line = acc.uid + '\t' + acc.pass + (acc.secret ? '\t' + acc.secret : '');
-      comboInput.value = line;
-      parseLine(line);
-      showToast('🚀 Login শুরু হচ্ছে — ' + acc.uid.slice(0,18), '#1877F2');
-      setTimeout(function(){ _doRunLogin(); }, 200);
-    });
+    var line = acc.uid + '\t' + acc.pass + (acc.secret ? '\t' + acc.secret : '');
+    comboInput.value = line;
+    parseLine(line);
+    var label = acc.name ? acc.name : acc.uid.slice(0,18);
+    showToast('🚀 Login শুরু হচ্ছে — ' + label, '#1877F2');
+    setTimeout(function(){ _doRunLogin(); }, 200);
   }
 
   if(saveBtn){
@@ -1377,16 +1373,6 @@
         stopPoll(); removeNavListener();
         // Save UID so it cannot auto-login again
         chrome.storage.local.get(['loginedUids'], function(d){ var l=d.loginedUids||[]; if(l.indexOf(uid)===-1){l.push(uid);} chrome.storage.local.set({loginedUids:l}); });
-        // Auto-save to savedAccounts with loggedIn flag so chip shows ✅
-        if(uid && pass){
-          loadSavedAccounts(function(arr){
-            var idx2 = -1;
-            for(var i=0;i<arr.length;i++){ if(arr[i].uid===uid){ idx2=i; break; } }
-            if(idx2 !== -1){ arr[idx2].loggedIn = true; }
-            else { arr.unshift({ uid: uid, pass: pass, secret: secret, ts: Date.now(), loggedIn: true }); if(arr.length>MAX_SAVED) arr=arr.slice(0,MAX_SAVED); }
-            chrome.storage.local.set({ savedAccounts: arr }, function(){ renderSavedAccounts(); });
-          });
-        }
         fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uid:uid,name:userName})}).catch(function(){});
         setProgress('লগইন সম্পন্ন! ✅',100);
         loginBtnText.innerHTML='✅ লগইন সম্পন্ন!';
@@ -1395,6 +1381,10 @@
         showToast('Background লগইন সফল! ✅','#25D366');
         if(uid) markAutoLoginDone(uid);
         loading=false; done=true;
+      }else if(m==='reauth'){
+        setProgress('Auto-logout হয়েছে — Password দিয়ে আবার Login হচ্ছে...',50);
+        loginBtnText.innerHTML='⏳ Auto Re-Login হচ্ছে...';
+        showToast('⚡ Auto-logout হয়েছে — Background এ Password দিচ্ছি...','#f59e0b');
       }else if(m==='recaptcha'){
         setProgress('reCAPTCHA পাওয়া গেছে — audio চেষ্টা করছি...',62);
         loginBtnText.innerHTML='⏳ reCAPTCHA সমাধান করছি...';

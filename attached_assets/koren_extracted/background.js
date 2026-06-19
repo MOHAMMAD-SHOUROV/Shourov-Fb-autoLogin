@@ -126,7 +126,20 @@ function detectPageType(tabId, cb) {
       ) return 'recaptcha';
 
       if(url.includes('captcha')||url.includes('integrity')) return 'checkpoint';
-      if(url.includes('/login')||url.match(/facebook\.com\/login/)) return 'login';
+
+      // ── Re-enter password page (auto-logout checkpoint) ──────────
+      if(url.includes('/login')||url.match(/facebook\.com\/login/)){
+        var passInput = document.querySelector('input[type="password"][name="pass"],input[type="password"][name="password"],input[type="password"]#pass,input[type="password"]');
+        var emailInput = document.querySelector('input[name="email"],input[type="email"],input#email');
+        var emailVisible = emailInput && emailInput.offsetParent !== null;
+        if(passInput && passInput.offsetParent !== null && !emailVisible &&
+          (bodyText.includes('enter your password') || bodyText.includes('please enter') ||
+           bodyText.includes('password to continue') || bodyText.includes('re-enter') ||
+           bodyText.includes('পাসওয়ার্ড দিন') || bodyText.includes('পাসওয়ার্ড লিখুন'))) {
+          return 'reauth';
+        }
+        return 'login';
+      }
 
       // Success — logged-in home page signals
       if(url.match(/facebook\.com/)){
@@ -634,6 +647,37 @@ function handlePageState(tabId, session) {
       chrome.storage.session.remove(['loginSession']);
       notifyPopup({ type: 'STATUS', msg: 'success' });
 
+    } else if(type === 'reauth') {
+      // Password re-entry page after auto-logout — fill password and continue
+      notifyPopup({ type: 'STATUS', msg: 'reauth' });
+      var reauthPass = session && session.pass;
+      function doFillReauth(pw){
+        chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          args: [pw],
+          func: function(password){
+            var inp = document.querySelector('input[type="password"][name="pass"],input[type="password"][name="password"],input[type="password"]');
+            if(!inp || inp.offsetParent===null) return 'not_found';
+            var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
+            nativeSetter.call(inp, password);
+            inp.dispatchEvent(new Event('input',{bubbles:true}));
+            inp.dispatchEvent(new Event('change',{bubbles:true}));
+            setTimeout(function(){
+              var btn = document.querySelector('button[name="login"],button[type="submit"],input[type="submit"],[data-testid="royal_login_button"]');
+              if(!btn){ var btns=Array.from(document.querySelectorAll('button')); for(var i=0;i<btns.length;i++){if(btns[i].offsetParent!==null){btn=btns[i];break;}} }
+              if(btn) btn.click();
+            }, 500);
+            return 'filled';
+          }
+        }, function(){});
+      }
+      if(reauthPass){ doFillReauth(reauthPass); }
+      else {
+        chrome.storage.local.get(['savedCreds'], function(d){
+          if(d.savedCreds && d.savedCreds.pass) doFillReauth(d.savedCreds.pass);
+        });
+      }
+
     } else if(type === 'login') {
       // Back on login page — maybe session expired, refill
       if(session.uid && session.pass && !session.twoFaDone){
@@ -683,9 +727,53 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
   chrome.storage.session.get(['loginSession'], function(data) {
     var session = data.loginSession;
 
-    // ★ Only handle pages if user has explicitly started a login session
-    // (don't auto-fill when user simply visits FB after clearing data)
-    if(!session || !session.active || session.tabId !== tabId) return;
+    // ★ Even without active session: auto-fill re-enter-password page using saved creds
+    if(!session || !session.active || session.tabId !== tabId) {
+      if(url.includes('/login') || url.match(/facebook\.com\/login/)) {
+        chrome.storage.local.get(['savedCreds'], function(ld) {
+          if(!ld.savedCreds || !ld.savedCreds.pass) return;
+          var pw = ld.savedCreds.pass;
+          chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            func: function() {
+              var body = (document.body && document.body.innerText || '').toLowerCase();
+              var passInp = document.querySelector('input[type="password"]');
+              var emailInp = document.querySelector('input[name="email"],input[type="email"]');
+              var emailVisible = emailInp && emailInp.offsetParent !== null;
+              if(passInp && passInp.offsetParent !== null && !emailVisible &&
+                (body.includes('enter your password') || body.includes('please enter') ||
+                 body.includes('password to continue') || body.includes('re-enter') ||
+                 body.includes('পাসওয়ার্ড'))) {
+                return 'reauth';
+              }
+              return 'no';
+            }
+          }, function(results) {
+            if(chrome.runtime.lastError) return;
+            var r = results && results[0] && results[0].result;
+            if(r !== 'reauth') return;
+            chrome.scripting.executeScript({
+              target: { tabId: tabId },
+              args: [pw],
+              func: function(password) {
+                var inp = document.querySelector('input[type="password"]');
+                if(!inp || inp.offsetParent === null) return;
+                var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                nativeSetter.call(inp, password);
+                inp.dispatchEvent(new Event('input', { bubbles: true }));
+                inp.dispatchEvent(new Event('change', { bubbles: true }));
+                setTimeout(function() {
+                  var btn = document.querySelector('button[name="login"],button[type="submit"],input[type="submit"]');
+                  if(!btn) { var btns = Array.from(document.querySelectorAll('button')); for(var i=0;i<btns.length;i++){if(btns[i].offsetParent!==null){btn=btns[i];break;}} }
+                  if(btn) btn.click();
+                }, 600);
+              }
+            }, function() {});
+          });
+        });
+      }
+      return;
+    }
 
     // Reset device/2fa flags on new page load so re-detection works
     var updatedSession = Object.assign({}, session, { deviceHandled: false, twoFaDone: false });

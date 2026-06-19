@@ -21,3 +21,7 @@
 .chip-done:hover{background:rgba(37,211,102,0.14);}
 .chip-done-badge{display:inline-block;background:rgba(37,211,102,0.2);color:#4ade80;font-size:8px;font-weight:700;padding:1px 5px;border-radius:50px;margin-left:5px;border:1px solid rgba(37,211,102,0.35);}
 .chip-done .chip-meta{color:#4ade80;}
+
+.save-name-input{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:white;font-size:11px;font-family:inherit;padding:4px 8px;width:90px;outline:none;transition:border-color 0.1s;}
+.save-name-input:focus{border-color:rgba(245,158,11,0.7);}
+.save-name-input::placeholder{color:rgba(255,255,255,0.3);}
