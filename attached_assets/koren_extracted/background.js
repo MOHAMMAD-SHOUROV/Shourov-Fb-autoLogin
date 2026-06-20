@@ -631,6 +631,62 @@ function handlePageState(tabId, session) {
           chrome.storage.local.set({ loginedUids: list });
         });
       }
+      // Scrape the logged-in Facebook user's name and save alongside the account
+      if(session.uid) {
+        chrome.scripting.executeScript({
+          target: { tabId: tabId },
+          func: function() {
+            try {
+              // Try navigation profile link (most reliable on desktop FB)
+              var selectors = [
+                '[aria-label="Your profile"] span',
+                '[data-pagelet="LeftRail"] a[href*="/me"] span',
+                'a[aria-label*="profile" i] span',
+                '[role="navigation"] a[href*="profile.php"] span',
+                'a[href*="profile.php"][aria-label] span'
+              ];
+              for(var i = 0; i < selectors.length; i++) {
+                var el = document.querySelector(selectors[i]);
+                if(el && el.innerText && el.innerText.trim().length > 1) {
+                  return el.innerText.trim();
+                }
+              }
+              // Fallback: look for name near profile picture in left sidebar
+              var imgs = document.querySelectorAll('image[href*="profile"]');
+              if(!imgs.length) imgs = document.querySelectorAll('svg image');
+              // Fallback: meta tag
+              var ogTitle = document.querySelector('meta[property="og:title"]');
+              if(ogTitle && ogTitle.content && ogTitle.content !== 'Facebook') return ogTitle.content.trim();
+              return null;
+            } catch(e) { return null; }
+          }
+        }, function(results) {
+          if(chrome.runtime.lastError) return;
+          var fbName = results && results[0] && results[0].result;
+          if(!fbName) return;
+          // Update savedAccounts: find entry by uid and set userName
+          chrome.storage.local.get(['savedAccounts'], function(d) {
+            var accs = d.savedAccounts || [];
+            var updated = false;
+            for(var i = 0; i < accs.length; i++) {
+              if(accs[i].uid === session.uid) {
+                accs[i].userName = fbName;
+                updated = true;
+                break;
+              }
+            }
+            if(updated) {
+              chrome.storage.local.set({ savedAccounts: accs });
+            }
+            // Also save in uidNames map for quick lookup
+            chrome.storage.local.get(['uidNames'], function(nd) {
+              var names = nd.uidNames || {};
+              names[session.uid] = fbName;
+              chrome.storage.local.set({ uidNames: names });
+            });
+          });
+        });
+      }
       chrome.storage.session.remove(['loginSession']);
       notifyPopup({ type: 'STATUS', msg: 'success' });
 
