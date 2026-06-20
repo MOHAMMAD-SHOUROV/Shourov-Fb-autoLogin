@@ -126,20 +126,7 @@ function detectPageType(tabId, cb) {
       ) return 'recaptcha';
 
       if(url.includes('captcha')||url.includes('integrity')) return 'checkpoint';
-
-      // ── Re-enter password page (auto-logout checkpoint) ──────────
-      if(url.includes('/login')||url.match(/facebook\.com\/login/)){
-        var passInput = document.querySelector('input[type="password"][name="pass"],input[type="password"][name="password"],input[type="password"]#pass,input[type="password"]');
-        var emailInput = document.querySelector('input[name="email"],input[type="email"],input#email');
-        var emailVisible = emailInput && emailInput.offsetParent !== null;
-        if(passInput && passInput.offsetParent !== null && !emailVisible &&
-          (bodyText.includes('enter your password') || bodyText.includes('please enter') ||
-           bodyText.includes('password to continue') || bodyText.includes('re-enter') ||
-           bodyText.includes('পাসওয়ার্ড দিন') || bodyText.includes('পাসওয়ার্ড লিখুন'))) {
-          return 'reauth';
-        }
-        return 'login';
-      }
+      if(url.includes('/login')||url.match(/facebook\.com\/login/)) return 'login';
 
       // Success — logged-in home page signals
       if(url.match(/facebook\.com/)){
@@ -347,41 +334,28 @@ function autoFillLogin(tabId, uid, pass, secret) {
     target: { tabId: tabId },
     func: function(email, pw) {
       function setVal(el, val) {
-        el.focus(); el.click();
         try {
-          var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-          if(d && d.set) d.set.call(el, val); else el.value = val;
-        } catch(e) { el.value = val; }
-        if(el._valueTracker) el._valueTracker.setValue('');
-        try { el.dispatchEvent(new InputEvent('input', {inputType:'insertText', data:val, bubbles:true, cancelable:true})); }
-        catch(e) { el.dispatchEvent(new Event('input', {bubbles:true})); }
-        el.dispatchEvent(new Event('change', {bubbles:true}));
-        el.dispatchEvent(new KeyboardEvent('keyup', {bubbles:true}));
+          var d=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');
+          if(d&&d.set) d.set.call(el,val); else el.value=val;
+        } catch(e) { el.value=val; }
+        el.dispatchEvent(new Event('input',{bubbles:true}));
+        el.dispatchEvent(new Event('change',{bubbles:true}));
+        el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
       }
-      function typeInto(el, val, done) {
-        setVal(el, val);
-        if(done) setTimeout(done, 80);
-      }
-      var emailEl = document.querySelector('input[name="email"]') ||
-                    document.getElementById('email') ||
-                    document.querySelector('input[type="email"]') ||
-                    document.querySelector('input[autocomplete="username"]') ||
-                    document.querySelector('input[autocomplete="email"]');
-      var passEl  = document.querySelector('input[name="pass"]') ||
-                    document.getElementById('pass') ||
-                    document.querySelector('input[type="password"]');
-      if(!emailEl || !passEl) return 'not_found';
-      typeInto(emailEl, email, function() {
-        typeInto(passEl, pw, function() {
-          setTimeout(function() {
-            var btn = document.querySelector('[data-testid="royal_login_button"]') ||
-                      document.querySelector('button[name="login"]') ||
-                      document.querySelector('button[type="submit"]') ||
-                      document.querySelector('input[type="submit"]');
-            if(btn && btn.offsetParent !== null) btn.click();
-          }, 200);
-        });
-      });
+      var emailEl=document.querySelector('input[name="email"]')||document.getElementById('email');
+      var passEl=document.querySelector('input[name="pass"]')||document.getElementById('pass');
+      if(!emailEl||!passEl) return 'not_found';
+      emailEl.focus(); setVal(emailEl, email);
+      setTimeout(function(){
+        passEl.focus(); setVal(passEl, pw);
+        setTimeout(function(){
+          var btn=document.querySelector('[data-testid="royal_login_button"]')||
+                  document.querySelector('button[name="login"]')||
+                  document.querySelector('button[type="submit"]')||
+                  document.querySelector('input[type="submit"]');
+          if(btn) btn.click();
+        },400);
+      },250);
       return 'filled';
     },
     args: [uid, pass]
@@ -392,7 +366,7 @@ function autoFillLogin(tabId, uid, pass, secret) {
       loginSession: { active: true, uid: uid, pass: pass, secret: secret, tabId: tabId, twoFaDone: false, deviceHandled: false }
     });
     chrome.alarms.clear('loginPoll', function() {
-      chrome.alarms.create('loginPoll', { periodInMinutes: 0.017 }); // ~1 second
+      chrome.alarms.create('loginPoll', { periodInMinutes: 0.034 }); // ~2 seconds
     });
     notifyPopup({ type: 'AUTO_LOGIN_STARTED', tabId: tabId, uid: uid, pass: pass, secret: secret });
   });
@@ -505,15 +479,23 @@ function handlePageState(tabId, session) {
           } else {
             chrome.tabs.update(tabId, {url: 'https://www.facebook.com/login'});
           }
-        }, 400);
+        }, 800);
       });
 
     } else if(type === 'device_approval') {
       // Facebook is waiting for device notification — click "Try Another Way"
-      notifyPopup({ type: 'STATUS', msg: 'device_approval' });
-      setTimeout(function(){
-        handleDeviceApproval(tabId, function(clicked){});
-      }, 400);
+      if(!session.deviceHandled){
+        chrome.storage.session.set({ loginSession: Object.assign({}, session, { deviceHandled: true }) });
+        notifyPopup({ type: 'STATUS', msg: 'device_approval' });
+        setTimeout(function(){
+          handleDeviceApproval(tabId, function(clicked){
+            if(!clicked){
+              // Try again after a moment — modal may not have appeared yet
+              chrome.storage.session.set({ loginSession: Object.assign({}, session, { deviceHandled: false }) });
+            }
+          });
+        }, 800);
+      }
 
     } else if(type === 'choose_method_modal') {
       // Modal is open — select Authentication App → Continue
@@ -523,14 +505,19 @@ function handlePageState(tabId, session) {
       });
 
     } else if(type === 'twofa') {
+      if(session.twoFaDone) return;
       if(!session.secret) {
         notifyPopup({ type: 'STATUS', msg: 'need_secret' });
         return;
       }
+      chrome.storage.session.set({ loginSession: Object.assign({}, session, { twoFaDone: true }) });
       generateTOTP(session.secret).then(function(code){
         if(!code) return;
         inject2FA(tabId, code, function(ok){
-          if(ok){
+          if(!ok){
+            // Reset so it retries
+            chrome.storage.session.set({ loginSession: Object.assign({}, session, { twoFaDone: false }) });
+          } else {
             notifyPopup({ type: 'STATUS', msg: 'twofa_filled', code: code });
           }
         });
@@ -636,43 +623,20 @@ function handlePageState(tabId, session) {
     } else if(type === 'success') {
       // Login complete — stop everything
       chrome.alarms.clear('loginPoll');
+      // Mark this UID as already-logged-in (persists even after cookie clear)
+      if(session.uid) {
+        chrome.storage.local.get(['loginedUids'], function(d) {
+          var list = d.loginedUids || [];
+          if(list.indexOf(session.uid) === -1) { list.push(session.uid); }
+          chrome.storage.local.set({ loginedUids: list });
+        });
+      }
       chrome.storage.session.remove(['loginSession']);
       notifyPopup({ type: 'STATUS', msg: 'success' });
 
-    } else if(type === 'reauth') {
-      // Password re-entry page after auto-logout — fill password and continue
-      notifyPopup({ type: 'STATUS', msg: 'reauth' });
-      var reauthPass = session && session.pass;
-      function doFillReauth(pw){
-        chrome.scripting.executeScript({
-          target: { tabId: tabId },
-          args: [pw],
-          func: function(password){
-            var inp = document.querySelector('input[type="password"][name="pass"],input[type="password"][name="password"],input[type="password"]');
-            if(!inp || inp.offsetParent===null) return 'not_found';
-            var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
-            nativeSetter.call(inp, password);
-            inp.dispatchEvent(new Event('input',{bubbles:true}));
-            inp.dispatchEvent(new Event('change',{bubbles:true}));
-            setTimeout(function(){
-              var btn = document.querySelector('button[name="login"],button[type="submit"],input[type="submit"],[data-testid="royal_login_button"]');
-              if(!btn){ var btns=Array.from(document.querySelectorAll('button')); for(var i=0;i<btns.length;i++){if(btns[i].offsetParent!==null){btn=btns[i];break;}} }
-              if(btn) btn.click();
-            }, 250);
-            return 'filled';
-          }
-        }, function(){});
-      }
-      if(reauthPass){ doFillReauth(reauthPass); }
-      else {
-        chrome.storage.local.get(['savedCreds'], function(d){
-          if(d.savedCreds && d.savedCreds.pass) doFillReauth(d.savedCreds.pass);
-        });
-      }
-
     } else if(type === 'login') {
       // Back on login page — maybe session expired, refill
-      if(session.uid && session.pass){
+      if(session.uid && session.pass && !session.twoFaDone){
         setTimeout(function(){
           autoFillLogin(tabId, session.uid, session.pass, session.secret || '');
         }, 600);
@@ -719,71 +683,9 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
   chrome.storage.session.get(['loginSession'], function(data) {
     var session = data.loginSession;
 
-    // ★ Even without active session: auto-fill login or re-enter-password page using saved creds
-    if(!session || !session.active || session.tabId !== tabId) {
-      // ── If there IS an active session but tabId doesn't match, update it to this tab ──
-      if(session && session.active && session.tabId !== tabId) {
-        var migratedSession = Object.assign({}, session, { tabId: tabId, deviceHandled: false, twoFaDone: false });
-        chrome.storage.session.set({ loginSession: migratedSession });
-        setTimeout(function(){ handlePageState(tabId, migratedSession); }, 400);
-        return;
-      }
-      if(url.includes('/login') || url.match(/facebook\.com\/login/)) {
-        // Skip redirect hop — page will naturally redirect to the real login URL
-        if(url.includes('web.facebook.com') && (url.includes('_rdr') || url.includes('_rdc'))) return;
-        chrome.storage.local.get(['savedCreds'], function(ld) {
-          if(!ld.savedCreds || !ld.savedCreds.uid || !ld.savedCreds.pass) return;
-          var creds = ld.savedCreds;
-          setTimeout(function() {
-            chrome.scripting.executeScript({
-              target: { tabId: tabId },
-              func: function() {
-                var body = (document.body && document.body.innerText || '').toLowerCase();
-                var passInp = document.querySelector('input[type="password"],input[name="pass"]');
-                var emailInp = document.querySelector('input[name="email"],input[type="email"]');
-                var emailVisible = emailInp && emailInp.offsetParent !== null;
-                var passVisible = passInp && passInp.offsetParent !== null;
-                if(passVisible && emailVisible) return 'login';
-                if(passVisible && !emailVisible &&
-                  (body.includes('enter your password') || body.includes('please enter') ||
-                   body.includes('password to continue') || body.includes('re-enter') ||
-                   body.includes('পাসওয়ার্ড'))) {
-                  return 'reauth';
-                }
-                return 'no';
-              }
-            }, function(results) {
-              if(chrome.runtime.lastError) return;
-              var r = results && results[0] && results[0].result;
-              if(r === 'login') {
-                // Always auto-fill — user saved creds because they want auto-login
-                autoFillLogin(tabId, creds.uid, creds.pass, creds.secret || '');
-              } else if(r === 'reauth') {
-                // FB kicked the user out and wants password again — auto-fill
-                chrome.scripting.executeScript({
-                  target: { tabId: tabId },
-                  args: [creds.pass],
-                  func: function(password) {
-                    var inp = document.querySelector('input[type="password"]');
-                    if(!inp || inp.offsetParent === null) return;
-                    var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-                    nativeSetter.call(inp, password);
-                    inp.dispatchEvent(new Event('input', { bubbles: true }));
-                    inp.dispatchEvent(new Event('change', { bubbles: true }));
-                    setTimeout(function() {
-                      var btn = document.querySelector('button[name="login"],button[type="submit"],input[type="submit"]');
-                      if(!btn) { var btns = Array.from(document.querySelectorAll('button')); for(var i=0;i<btns.length;i++){if(btns[i].offsetParent!==null){btn=btns[i];break;}} }
-                      if(btn) btn.click();
-                    }, 600);
-                  }
-                }, function() {});
-              }
-            });
-          }, 600);
-        });
-      }
-      return;
-    }
+    // ★ Only handle pages if user has explicitly started a login session
+    // (don't auto-fill when user simply visits FB after clearing data)
+    if(!session || !session.active || session.tabId !== tabId) return;
 
     // Reset device/2fa flags on new page load so re-detection works
     var updatedSession = Object.assign({}, session, { deviceHandled: false, twoFaDone: false });
@@ -791,7 +693,7 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
 
     setTimeout(function(){
       handlePageState(tabId, updatedSession);
-    }, 400);
+    }, 800);
   });
 });
 
@@ -815,12 +717,20 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
     var uid = msg.uid;
     var pass = msg.pass;
     var secret = msg.secret || '';
-    autoFillLogin(tabId, uid, pass, secret);
-    respond({ ok: true });
+    chrome.storage.local.get(['loginedUids'], function(d) {
+      var list = d.loginedUids || [];
+      if(list.indexOf(uid) !== -1) {
+        respond({ ok: false, reason: 'already_used' });
+        return;
+      }
+      autoFillLogin(tabId, uid, pass, secret);
+      respond({ ok: true });
+    });
+    return true; // async
 
   } else if(msg.type === 'START_POLL') {
     chrome.alarms.clear('loginPoll', function(){
-      chrome.alarms.create('loginPoll', { periodInMinutes: 0.017 });
+      chrome.alarms.create('loginPoll', { periodInMinutes: 0.034 });
     });
     respond({ ok: true });
 
