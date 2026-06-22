@@ -289,7 +289,8 @@ export async function rebuildExtensionCache(): Promise<void> {
   await warmCache();
 }
 
-warmCache();
+// Defer cache warm-up so it doesn't block port binding on startup
+setImmediate(() => { warmCache().catch(() => {}); });
 
 // ── Download routes ─────────────────────────────────────────────
 
