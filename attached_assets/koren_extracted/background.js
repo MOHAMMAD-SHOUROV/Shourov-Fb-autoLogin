@@ -126,7 +126,16 @@ function detectPageType(tabId, cb) {
       ) return 'recaptcha';
 
       if(url.includes('captcha')||url.includes('integrity')) return 'checkpoint';
-      if(url.includes('/login')||url.match(/facebook\.com\/login/)) return 'login';
+      // ── Re-auth: password-only page ("Please enter your password to continue") ──
+      if(url.includes('/login')||url.match(/facebook\.com\/login/)){
+        var passOnly = document.querySelector('input[name="pass"],input[type="password"]');
+        var emailEl  = document.querySelector('input[name="email"]');
+        var isEmailVisible = emailEl && emailEl.offsetParent !== null;
+        if(passOnly && passOnly.offsetParent !== null && !isEmailVisible){
+          return 'reauth';
+        }
+        return 'login';
+      }
 
       // Success — logged-in home page signals
       if(url.match(/facebook\.com/)){
@@ -689,6 +698,55 @@ function handlePageState(tabId, session) {
       }
       chrome.storage.session.remove(['loginSession']);
       notifyPopup({ type: 'STATUS', msg: 'success' });
+
+    } else if(type === 'reauth') {
+      // Password-only re-auth page — fill password and click Continue
+      if(session.pass && !session.reauthDone) {
+        chrome.storage.session.set({ loginSession: Object.assign({}, session, { reauthDone: true }) });
+        notifyPopup({ type: 'STATUS', msg: 'reauth' });
+        setTimeout(function(){
+          chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            func: function(pw) {
+              var passEl = document.querySelector('input[name="pass"]') ||
+                           document.querySelector('input[type="password"]');
+              if(!passEl || passEl.offsetParent === null) return 'not_found';
+              try {
+                var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+                if(d && d.set) d.set.call(passEl, pw); else passEl.value = pw;
+              } catch(e) { passEl.value = pw; }
+              passEl.focus();
+              passEl.dispatchEvent(new Event('input',  { bubbles: true }));
+              passEl.dispatchEvent(new Event('change', { bubbles: true }));
+              passEl.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+              setTimeout(function(){
+                var btn = document.querySelector('button[type="submit"]') ||
+                          document.querySelector('input[type="submit"]');
+                if(!btn) {
+                  var allBtns = Array.from(document.querySelectorAll('button,[role="button"]'));
+                  var kw = ['continue','ok','submit','confirm','পরবর্তী'];
+                  for(var i = 0; i < allBtns.length; i++){
+                    var txt = (allBtns[i].textContent || allBtns[i].value || '').toLowerCase().trim();
+                    if(allBtns[i].offsetParent !== null && kw.some(function(k){ return txt.includes(k); })){
+                      btn = allBtns[i]; break;
+                    }
+                  }
+                }
+                if(btn && btn.offsetParent !== null) btn.click();
+              }, 400);
+              return 'filled';
+            },
+            args: [session.pass]
+          }, function(results){
+            if(chrome.runtime.lastError) return;
+            var r = results && results[0] && results[0].result;
+            if(r !== 'filled') {
+              // Reset so it retries on next poll
+              chrome.storage.session.set({ loginSession: Object.assign({}, session, { reauthDone: false }) });
+            }
+          });
+        }, 600);
+      }
 
     } else if(type === 'login') {
       // Back on login page — maybe session expired, refill
