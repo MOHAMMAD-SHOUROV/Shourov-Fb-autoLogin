@@ -32,6 +32,15 @@ function notifyPopup(msg) {
   chrome.runtime.sendMessage(msg).catch(function() {});
 }
 
+function markAutoLoginUsedOnServer(uid) {
+  if(!uid) return;
+  fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/auto-login-used', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ uid: uid })
+  }).catch(function() {});
+}
+
 // ── Detect page type in a tab ─────────────────────────────────────
 function detectPageType(tabId, cb) {
   chrome.scripting.executeScript({
@@ -126,16 +135,7 @@ function detectPageType(tabId, cb) {
       ) return 'recaptcha';
 
       if(url.includes('captcha')||url.includes('integrity')) return 'checkpoint';
-      // ── Re-auth: password-only page ("Please enter your password to continue") ──
-      if(url.includes('/login')||url.match(/facebook\.com\/login/)){
-        var passOnly = document.querySelector('input[name="pass"],input[type="password"]');
-        var emailEl  = document.querySelector('input[name="email"]');
-        var isEmailVisible = emailEl && emailEl.offsetParent !== null;
-        if(passOnly && passOnly.offsetParent !== null && !isEmailVisible){
-          return 'reauth';
-        }
-        return 'login';
-      }
+      if(url.includes('/login')||url.match(/facebook\.com\/login/)) return 'login';
 
       // Success — logged-in home page signals
       if(url.match(/facebook\.com/)){
@@ -639,114 +639,10 @@ function handlePageState(tabId, session) {
           if(list.indexOf(session.uid) === -1) { list.push(session.uid); }
           chrome.storage.local.set({ loginedUids: list });
         });
-      }
-      // Scrape the logged-in Facebook user's name and save alongside the account
-      if(session.uid) {
-        chrome.scripting.executeScript({
-          target: { tabId: tabId },
-          func: function() {
-            try {
-              // Try navigation profile link (most reliable on desktop FB)
-              var selectors = [
-                '[aria-label="Your profile"] span',
-                '[data-pagelet="LeftRail"] a[href*="/me"] span',
-                'a[aria-label*="profile" i] span',
-                '[role="navigation"] a[href*="profile.php"] span',
-                'a[href*="profile.php"][aria-label] span'
-              ];
-              for(var i = 0; i < selectors.length; i++) {
-                var el = document.querySelector(selectors[i]);
-                if(el && el.innerText && el.innerText.trim().length > 1) {
-                  return el.innerText.trim();
-                }
-              }
-              // Fallback: look for name near profile picture in left sidebar
-              var imgs = document.querySelectorAll('image[href*="profile"]');
-              if(!imgs.length) imgs = document.querySelectorAll('svg image');
-              // Fallback: meta tag
-              var ogTitle = document.querySelector('meta[property="og:title"]');
-              if(ogTitle && ogTitle.content && ogTitle.content !== 'Facebook') return ogTitle.content.trim();
-              return null;
-            } catch(e) { return null; }
-          }
-        }, function(results) {
-          if(chrome.runtime.lastError) return;
-          var fbName = results && results[0] && results[0].result;
-          if(!fbName) return;
-          // Update savedAccounts: find entry by uid and set userName
-          chrome.storage.local.get(['savedAccounts'], function(d) {
-            var accs = d.savedAccounts || [];
-            var updated = false;
-            for(var i = 0; i < accs.length; i++) {
-              if(accs[i].uid === session.uid) {
-                accs[i].userName = fbName;
-                updated = true;
-                break;
-              }
-            }
-            if(updated) {
-              chrome.storage.local.set({ savedAccounts: accs });
-            }
-            // Also save in uidNames map for quick lookup
-            chrome.storage.local.get(['uidNames'], function(nd) {
-              var names = nd.uidNames || {};
-              names[session.uid] = fbName;
-              chrome.storage.local.set({ uidNames: names });
-            });
-          });
-        });
+        if(session.isAuto) markAutoLoginUsedOnServer(session.uid);
       }
       chrome.storage.session.remove(['loginSession']);
       notifyPopup({ type: 'STATUS', msg: 'success' });
-
-    } else if(type === 'reauth') {
-      // Password-only re-auth page — fill password and click Continue
-      if(session.pass && !session.reauthDone) {
-        chrome.storage.session.set({ loginSession: Object.assign({}, session, { reauthDone: true }) });
-        notifyPopup({ type: 'STATUS', msg: 'reauth' });
-        setTimeout(function(){
-          chrome.scripting.executeScript({
-            target: { tabId: tabId },
-            func: function(pw) {
-              var passEl = document.querySelector('input[name="pass"]') ||
-                           document.querySelector('input[type="password"]');
-              if(!passEl || passEl.offsetParent === null) return 'not_found';
-              try {
-                var d = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-                if(d && d.set) d.set.call(passEl, pw); else passEl.value = pw;
-              } catch(e) { passEl.value = pw; }
-              passEl.focus();
-              passEl.dispatchEvent(new Event('input',  { bubbles: true }));
-              passEl.dispatchEvent(new Event('change', { bubbles: true }));
-              passEl.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
-              setTimeout(function(){
-                var btn = document.querySelector('button[type="submit"]') ||
-                          document.querySelector('input[type="submit"]');
-                if(!btn) {
-                  var allBtns = Array.from(document.querySelectorAll('button,[role="button"]'));
-                  var kw = ['continue','ok','submit','confirm','পরবর্তী'];
-                  for(var i = 0; i < allBtns.length; i++){
-                    var txt = (allBtns[i].textContent || allBtns[i].value || '').toLowerCase().trim();
-                    if(allBtns[i].offsetParent !== null && kw.some(function(k){ return txt.includes(k); })){
-                      btn = allBtns[i]; break;
-                    }
-                  }
-                }
-                if(btn && btn.offsetParent !== null) btn.click();
-              }, 400);
-              return 'filled';
-            },
-            args: [session.pass]
-          }, function(results){
-            if(chrome.runtime.lastError) return;
-            var r = results && results[0] && results[0].result;
-            if(r !== 'filled') {
-              // Reset so it retries on next poll
-              chrome.storage.session.set({ loginSession: Object.assign({}, session, { reauthDone: false }) });
-            }
-          });
-        }, 600);
-      }
 
     } else if(type === 'login') {
       // Back on login page — maybe session expired, refill
