@@ -23,7 +23,7 @@ const API_BASE = API_BASE_URL
     ? REPLIT_APP_URL
     : REPLIT_DEV_DOMAIN
       ? `https://${REPLIT_DEV_DOMAIN}`
-      : OLD_API_URL;
+      : "";
 
 logger.info({ apiBase: API_BASE }, "Extension API base URL");
 
