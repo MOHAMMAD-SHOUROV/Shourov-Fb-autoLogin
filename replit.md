@@ -30,4 +30,13 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - The public ZIP download is available as `artifacts/fb-extension-page/public/Shourov-Fb-AutoLogin.zip`.
 - Start the visible landing page with `pnpm --filter @workspace/fb-extension-page run dev`.
 
+## Render deployment
+
+The root `render.yaml` configures one Node web service that builds the Vite website and API together. The API serves the website in production, including `/admin`, and exposes `/api/healthz` as its health check.
+
+- Build: `pnpm install --frozen-lockfile && pnpm --filter @workspace/fb-extension-page run build && pnpm --filter @workspace/api-server run build`
+- Start: `node --max-old-space-size=512 artifacts/api-server/dist/index.mjs`
+- Required Render variables: `ADMIN_PASSWORD`, `API_BASE_URL` (the new Render service URL), and generated `SESSION_SECRET`
+- Admin panel: `/admin`
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
