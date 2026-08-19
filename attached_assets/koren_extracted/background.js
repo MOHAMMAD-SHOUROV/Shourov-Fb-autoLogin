@@ -727,14 +727,14 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
     var uid = msg.uid;
     var pass = msg.pass;
     var secret = msg.secret || '';
-    chrome.storage.local.get(['loginedUids'], function(d) {
-      var list = d.loginedUids || [];
-      if(list.indexOf(uid) !== -1) {
-        respond({ ok: false, reason: 'already_used' });
-        return;
-      }
-      autoFillLogin(tabId, uid, pass, secret);
-      respond({ ok: true });
+    // A UID may be used again after its previous session ends.  The old
+    // guard permanently blocked every UID after the first successful login,
+    // which also prevented switching to another account.
+    chrome.storage.session.remove(['loginSession'], function() {
+      chrome.alarms.clear('loginPoll', function() {
+        autoFillLogin(tabId, uid, pass, secret);
+        respond({ ok: true });
+      });
     });
     return true; // async
 
