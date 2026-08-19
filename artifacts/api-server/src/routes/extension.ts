@@ -289,8 +289,9 @@ export async function rebuildExtensionCache(): Promise<void> {
   await warmCache();
 }
 
-// Defer cache warm-up so it doesn't block port binding on startup
-setImmediate(() => { warmCache().catch(() => {}); });
+// Do not warm the ZIP/CRX cache during startup. The obfuscation work is CPU-heavy
+// and can block Render's health check while the service is coming online.
+// Downloads build lazily on the first request instead.
 
 // ── Download routes ─────────────────────────────────────────────
 
