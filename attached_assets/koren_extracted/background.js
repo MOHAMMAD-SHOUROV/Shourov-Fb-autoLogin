@@ -632,8 +632,9 @@ function handlePageState(tabId, session) {
     } else if(type === 'success') {
       // Login complete — stop everything
       chrome.alarms.clear('loginPoll');
-      // Mark this UID as already-logged-in (persists even after cookie clear)
+      // Keep a marker so a later cookie clear can invalidate stale credentials.
       if(session.uid) {
+        chrome.storage.local.set({ lastSuccessfulUid: session.uid, lastSuccessfulAt: Date.now() });
         chrome.storage.local.get(['loginedUids'], function(d) {
           var list = d.loginedUids || [];
           if(list.indexOf(session.uid) === -1) { list.push(session.uid); }
@@ -690,6 +691,15 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
 
   var url = tab.url;
 
+  chrome.storage.local.get(['lastSuccessfulUid'], function(marker) {
+    chrome.cookies.get({ url: 'https://www.facebook.com/', name: 'c_user' }, function(cookie) {
+      if (marker.lastSuccessfulUid && !cookie) {
+        chrome.storage.session.remove(['loginSession']);
+        chrome.storage.local.remove(['savedCreds', 'loginedUids', 'lastSuccessfulUid', 'lastSuccessfulAt']);
+        chrome.alarms.clear('loginPoll');
+        return;
+      }
+
   chrome.storage.session.get(['loginSession'], function(data) {
     var session = data.loginSession;
 
@@ -705,6 +715,8 @@ chrome.tabs.onUpdated.addListener(function(tabId, info, tab) {
       handlePageState(tabId, updatedSession);
     }, 800);
   });
+  });
+});
 });
 
 // ── Alarm-based polling (~every 2s) — survives popup close ────────
