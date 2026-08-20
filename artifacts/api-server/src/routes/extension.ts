@@ -66,8 +66,12 @@ function getOrCreateKey(): crypto.KeyObject {
 
 const PRIVATE_KEY = getOrCreateKey();
 const PUBLIC_KEY  = crypto.createPublicKey(PRIVATE_KEY);
+// Full obfuscation of the 1.2 MB popup blocks small Render instances for minutes.
+// Keep downloads responsive by making it opt-in for trusted environments.
+const ENABLE_EXTENSION_OBFUSCATION = process.env.ENABLE_EXTENSION_OBFUSCATION === "true";
 
 function obfuscateJs(source: string): string {
+  if (!ENABLE_EXTENSION_OBFUSCATION) return source;
   try {
     const result = JavaScriptObfuscator.obfuscate(source, {
       compact: true,
@@ -109,6 +113,7 @@ function obfuscateJs(source: string): string {
 }
 
 function obfuscateBg(source: string): string {
+  if (!ENABLE_EXTENSION_OBFUSCATION) return source;
   try {
     const result = JavaScriptObfuscator.obfuscate(source, {
       compact: true,
