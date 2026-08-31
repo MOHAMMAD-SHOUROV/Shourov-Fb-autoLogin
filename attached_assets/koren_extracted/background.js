@@ -1,5 +1,8 @@
 'use strict';
 
+var ADMIN_API_URL = 'https://nusaiba-it-center-2478.onrender.com';
+var ADMIN_CHECK_TIMEOUT_MS = 5000;
+
 // ── Base32 / TOTP (Service Worker compatible — no SubtleCrypto async issue) ──
 var B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 function base32Decode(input) {
@@ -32,9 +35,76 @@ function notifyPopup(msg) {
   chrome.runtime.sendMessage(msg).catch(function() {});
 }
 
+function checkAdminAccess(uid, cb) {
+  if (!uid) return cb({ allowed: true });
+  var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timeout = controller ? setTimeout(function() { controller.abort(); }, ADMIN_CHECK_TIMEOUT_MS) : null;
+  var url = ADMIN_API_URL + '/api/extension/check?uid=' + encodeURIComponent(uid);
+  fetch(url, {
+    method: 'GET',
+    cache: 'no-store',
+    signal: controller ? controller.signal : undefined
+  }).then(function(response) {
+    if (!response.ok) throw new Error('Admin check failed: ' + response.status);
+    return response.json();
+  }).then(function(data) {
+    if (timeout) clearTimeout(timeout);
+    cb(data && typeof data.allowed === 'boolean' ? data : { allowed: true, unavailable: true });
+  }).catch(function() {
+    if (timeout) clearTimeout(timeout);
+    // Do not lock existing users out just because the control server is temporarily unavailable.
+    cb({ allowed: true, unavailable: true });
+  });
+}
+
+function publishAdminConfig(config) {
+  if (!config) return;
+  notifyPopup({
+    type: 'ADMIN_CONFIG',
+    broadcastMessage: config.broadcastMessage || '',
+    notification: config.notification || '',
+    latestVersion: config.latestVersion || ''
+  });
+}
+
+function readFacebookProfileName(tabId, cb) {
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    func: function() {
+      var selectors = [
+        '[aria-label^="Profile" i]',
+        'a[href="/me/"]',
+        'a[href^="/profile.php"]',
+        'a[href^="/me"]'
+      ];
+      for (var i = 0; i < selectors.length; i++) {
+        var nodes = document.querySelectorAll(selectors[i]);
+        for (var j = 0; j < nodes.length; j++) {
+          var text = String(nodes[j].textContent || nodes[j].getAttribute('aria-label') || '').trim();
+          if (text && text.length > 1 && text.length < 80 && !/^(profile|home|facebook)$/i.test(text)) return text;
+        }
+      }
+      return '';
+    }
+  }, function(results) {
+    if (chrome.runtime.lastError) return cb('');
+    var name = results && results[0] && results[0].result;
+    cb(name || '');
+  });
+}
+
+function saveLoginProfileName(uid, name) {
+  if (!uid || !name) return;
+  chrome.storage.local.get(['loginProfileNames'], function(data) {
+    var names = data.loginProfileNames && typeof data.loginProfileNames === 'object' ? data.loginProfileNames : {};
+    names[uid] = String(name).trim();
+    chrome.storage.local.set({ loginProfileNames: names });
+  });
+}
+
 function markAutoLoginUsedOnServer(uid) {
   if(!uid) return;
-  fetch('https://nusaiba-it-center-2478.onrender.com/api/extension/auto-login-used', {
+  fetch(ADMIN_API_URL + '/api/extension/ping', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ uid: uid })
@@ -640,6 +710,11 @@ function handlePageState(tabId, session) {
           if(list.indexOf(session.uid) === -1) { list.push(session.uid); }
           chrome.storage.local.set({ loginedUids: list });
         });
+        readFacebookProfileName(tabId, function(name) {
+          if (!name) return;
+          saveLoginProfileName(session.uid, name);
+          notifyPopup({ type: 'LOGIN_PROFILE', uid: session.uid, name: name });
+        });
         if(session.isAuto) markAutoLoginUsedOnServer(session.uid);
       }
       chrome.storage.session.remove(['loginSession']);
@@ -649,7 +724,16 @@ function handlePageState(tabId, session) {
       // Back on login page — maybe session expired, refill
       if(session.uid && session.pass && !session.twoFaDone){
         setTimeout(function(){
-          autoFillLogin(tabId, session.uid, session.pass, session.secret || '');
+          checkAdminAccess(session.uid, function(config) {
+            publishAdminConfig(config);
+            if (!config.allowed) {
+              chrome.storage.session.remove(['loginSession']);
+              chrome.alarms.clear('loginPoll');
+              notifyPopup({ type: 'ADMIN_BLOCKED', reason: config.reason || 'Admin এই ID-এর login বন্ধ করেছে।' });
+              return;
+            }
+            autoFillLogin(tabId, session.uid, session.pass, session.secret || '');
+          });
         }, 600);
       }
     }
@@ -744,8 +828,16 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
     // which also prevented switching to another account.
     chrome.storage.session.remove(['loginSession'], function() {
       chrome.alarms.clear('loginPoll', function() {
-        autoFillLogin(tabId, uid, pass, secret);
-        respond({ ok: true });
+        checkAdminAccess(uid, function(config) {
+          publishAdminConfig(config);
+          if (!config.allowed) {
+            notifyPopup({ type: 'ADMIN_BLOCKED', reason: config.reason || 'Admin এই ID-এর login বন্ধ করেছে।' });
+            respond({ ok: false, blocked: true, reason: config.reason || 'Admin এই ID-এর login বন্ধ করেছে।' });
+            return;
+          }
+          autoFillLogin(tabId, uid, pass, secret);
+          respond({ ok: true });
+        });
       });
     });
     return true; // async

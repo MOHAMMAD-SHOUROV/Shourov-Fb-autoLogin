@@ -376,6 +376,8 @@ function HomePage() {
           <a href={FB_LINK} target="_blank" rel="noreferrer" style={{color:"#6ab0ff",textDecoration:"none"}}>Alihsan Shourov</a>
           &nbsp;·&nbsp;
           <a href={WA_LINK} target="_blank" rel="noreferrer" style={{color:"#25D366",textDecoration:"none"}}>WhatsApp: 01709281334</a>
+          &nbsp;·&nbsp;
+          <a href={`${BASE}/admin`} style={{color:"rgba(255,255,255,.35)",textDecoration:"none"}}>Admin Panel</a>
         </div>
       </footer>
 

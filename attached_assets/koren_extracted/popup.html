@@ -9,8 +9,8 @@
     .brand-mark{color:#fff;font-weight:900;font-size:17px;font-family:Georgia,serif;letter-spacing:-1px}
     .input-hint{font-size:10px;color:rgba(255,255,255,.25);margin-top:3px}
     .totp-inline{display:flex;align-items:center;gap:5px}
-    .login-actions{display:grid;grid-template-columns:1fr 92px;gap:7px}
-    .login-actions .login-btn{min-width:0}
+    .login-actions{display:block}
+    .login-status{font-size:11px;color:rgba(255,255,255,.52);text-align:center;margin:8px 0 7px;min-height:16px}
     .stop-btn{border:1px solid rgba(229,62,62,.45);border-radius:10px;background:rgba(229,62,62,.14);color:#fca5a5;font-weight:700;font-size:11px;cursor:pointer;padding:8px 5px}
     .stop-btn:hover:not(:disabled){background:rgba(229,62,62,.3)}
     .stop-btn:disabled{opacity:.45;cursor:not-allowed}
@@ -21,6 +21,16 @@
     .saved-chip-off{border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.08)}
     .saved-chip-off .chip-uid{color:#fcd34d}
     .is-loading{opacity:.78}
+    #adminBanner{margin:0 12px 8px;padding:8px 10px;border:1px solid;border-radius:8px;font-size:11px;line-height:1.45}
+    .bin-tools{margin-top:12px;padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.025)}
+    .bin-label{display:block;font-size:10px;color:rgba(255,255,255,.5);margin-bottom:6px}
+    .bin-entry{display:flex;gap:6px}
+    .bin-entry input{flex:1;min-width:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:7px 9px;color:#fff;font-size:11px;outline:none}
+    .bin-save{border:1px solid rgba(37,211,102,.35);border-radius:7px;background:rgba(37,211,102,.13);color:#86efac;font-size:10px;font-weight:700;padding:0 10px;cursor:pointer}
+    .bin-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+    .bin-chip{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(96,165,250,.25);border-radius:6px;background:rgba(96,165,250,.1);color:#bfdbfe;padding:4px 6px;font-size:10px}
+    .bin-delete{border:0;background:none;color:#fca5a5;cursor:pointer;padding:0;font-size:13px;line-height:1}
+    .payate-link{display:block;margin-top:8px;color:#60a5fa;text-align:center;font-size:11px;text-decoration:none}
   </style>
 </head>
 <body>
@@ -61,6 +71,15 @@
         </div>
         <textarea id="comboInput" rows="2" placeholder="UID Password 2FA_Secret (2FA না থাকলে শুধু UID Password দিন)"></textarea>
         <div class="input-hint">UID[Tab]Password — অথবা — UID[Tab]Password[Tab]2FA_Secret · valid data দিলেই auto start</div>
+        <div class="bin-tools">
+          <label class="bin-label" for="binInput">BIN number save করুন</label>
+          <div class="bin-entry">
+            <input id="binInput" type="text" inputmode="numeric" placeholder="24789805234xxxx" maxlength="32"/>
+            <button id="saveBinBtn" class="bin-save" type="button">Save</button>
+          </div>
+          <div id="binList" class="bin-list"></div>
+          <a class="payate-link" href="https://www.payate.com/best-credit-cards/" target="_blank" rel="noreferrer">Best Credit Cards খুলুন ↗</a>
+        </div>
       </div>
 
       <div id="parsedRow" class="parsed-row" style="display:none;">
@@ -99,9 +118,7 @@
       </div>
 
       <div class="login-actions">
-        <button class="login-btn" id="loginBtn" disabled>
-          <span id="loginBtnText">Auto Login চলছে...</span>
-        </button>
+        <div class="login-status" id="loginStatus">UID ও Password দিলেই Auto Login শুরু হবে</div>
         <button class="stop-btn" id="stopBtn" type="button" disabled>Stop / Off</button>
       </div>
 
@@ -111,6 +128,13 @@
           <button id="clearAllBtn" class="clear-all-btn" title="সব মুছে ফেলুন">Clear All</button>
         </div>
         <div id="savedAccountsList" class="saved-list"></div>
+      </div>
+      <div id="loginHistoryWrap" class="saved-wrap" style="display:none;">
+        <div class="saved-header">
+          <label>Login করা ID — click করলে login হবে</label>
+          <span style="font-size:10px;color:rgba(255,255,255,.3)">আলাদা history</span>
+        </div>
+        <div id="loginHistoryList" class="saved-list"></div>
       </div>
 
       <div id="successBox" class="success-box" style="display:none;">

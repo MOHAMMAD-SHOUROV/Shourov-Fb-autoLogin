@@ -2,14 +2,18 @@
   'use strict';
 
   var API_BASE = 'https://nusaiba-it-center-2478.onrender.com';
-  var STORAGE_KEYS = ['savedAccounts', 'savedCreds', 'comboDraft', 'disabledUids'];
+  var myVersion = '1.6.3';
+  var STORAGE_KEYS = ['savedAccounts', 'savedCreds', 'comboDraft', 'disabledUids', 'loginHistory', 'savedBins', 'loginProfileNames'];
   var state = {
     account: null,
     accounts: [],
+    loginHistory: [],
+    bins: [],
     disabledUids: {},
     loading: false,
     currentTabId: null,
     autoStartTimer: null,
+    lastAutoSignature: '',
     toastTimer: null,
     totpTimer: null,
     totpCode: '------'
@@ -29,15 +33,20 @@
   var progressFill = $('progressFill');
   var stageLabel = $('stageLabel');
   var stagePct = $('stagePct');
-  var loginBtn = $('loginBtn');
-  var loginBtnText = $('loginBtnText');
+  var loginStatus = $('loginStatus');
   var stopBtn = $('stopBtn');
   var successBox = $('successBox');
   var usedCodeEl = $('usedCode');
   var toastEl = $('toast');
   var savedWrap = $('savedAccountsWrap');
   var savedList = $('savedAccountsList');
+  var loginHistoryWrap = $('loginHistoryWrap');
+  var loginHistoryList = $('loginHistoryList');
+  var binInput = $('binInput');
+  var saveBinBtn = $('saveBinBtn');
+  var binList = $('binList');
   var saveBtn = $('saveBtn');
+  var adminBanner = $('adminBanner');
 
   function storageGet(keys, cb) {
     try { chrome.storage.local.get(keys, cb); } catch (e) { cb({}); }
@@ -56,6 +65,25 @@
     state.toastTimer = setTimeout(function () {
       toastEl.style.display = 'none';
     }, 3500);
+  }
+
+  function showAdminBanner(message, color) {
+    if (!adminBanner || !message) return;
+    adminBanner.textContent = message;
+    adminBanner.style.display = 'block';
+    adminBanner.style.background = (color || '#1877F2') + '22';
+    adminBanner.style.borderColor = (color || '#1877F2') + '66';
+    adminBanner.style.color = color || '#93c5fd';
+  }
+
+  function handleAdminConfig(message) {
+    var notices = [];
+    if (message.broadcastMessage) notices.push('📢 ' + message.broadcastMessage);
+    if (message.notification) notices.push('🔔 ' + message.notification);
+    if (message.latestVersion && message.latestVersion !== myVersion) {
+      notices.push('🆕 নতুন version v' + message.latestVersion + ' available — নতুন ZIP download করুন।');
+    }
+    if (notices.length) showAdminBanner(notices.join('  •  '), '#60a5fa');
   }
 
   function setProgress(label, percent) {
@@ -116,7 +144,9 @@
     storageSet({
       savedAccounts: state.accounts,
       disabledUids: state.disabledUids,
-      comboDraft: comboInput.value
+      comboDraft: comboInput.value,
+      loginHistory: state.loginHistory,
+      savedBins: state.bins
     });
   }
 
@@ -150,15 +180,14 @@
     if (!account) {
       parsedRow.style.display = 'none';
       totpBox.style.display = 'none';
-      loginBtn.disabled = true;
       stopBtn.disabled = true;
+      if (loginStatus) loginStatus.textContent = 'UID ও Password দিলেই Auto Login শুরু হবে';
       return;
     }
     parsedRow.style.display = 'grid';
     pUid.textContent = account.uid || '—';
     pPass.textContent = account.pass ? '••••••' : '—';
     pSecret.textContent = account.secret ? account.secret.slice(0, 6) + '…' : 'নেই';
-    loginBtn.disabled = false;
     stopBtn.disabled = false;
     stopBtn.textContent = isDisabled(account.uid) ? 'On / চালু করুন' : 'Stop / Off';
     stopBtn.classList.toggle('is-off', isDisabled(account.uid));
@@ -253,9 +282,9 @@
   }
 
   function updateLoginButton(text, busy) {
-    loginBtnText.textContent = text;
-    loginBtn.classList.toggle('is-loading', !!busy);
-    loginBtn.disabled = !!busy || !state.account;
+    if (!loginStatus) return;
+    loginStatus.textContent = text;
+    loginStatus.classList.toggle('is-loading', !!busy);
   }
 
   function markEnabled(uid) {
@@ -268,6 +297,8 @@
   function stopCurrent() {
     if (!state.account) return;
     var uid = normalizeUid(state.account.uid);
+    clearTimeout(state.autoStartTimer);
+    state.lastAutoSignature = '';
     state.disabledUids[uid] = true;
     state.loading = false;
     sendMessage({ type: 'STOP_POLL' });
@@ -277,6 +308,50 @@
     updateLoginButton('Off — আবার paste করলে On হবে', false);
     setProgress('এই ID Off করা হয়েছে', 0);
     showToast('এই ID এখন Off থাকবে। আবার paste করলে Auto On হবে।', '#f59e0b');
+  }
+
+  function recordLoginAccount(account) {
+    if (!account || !account.uid || !account.pass) return;
+    var next = [];
+    state.loginHistory.forEach(function (item) {
+      if (sameAccount(item, account)) {
+        next.push({
+          uid: account.uid,
+          pass: account.pass,
+          secret: account.secret || item.secret || '',
+          name: account.name || item.name || '',
+          lastLoginAt: Date.now()
+        });
+      } else {
+        next.push(item);
+      }
+    });
+    if (!next.some(function (item) { return sameAccount(item, account); })) {
+      next.unshift({
+        uid: account.uid,
+        pass: account.pass,
+        secret: account.secret || '',
+        name: account.name || '',
+        lastLoginAt: Date.now()
+      });
+    }
+    state.loginHistory = next.slice(0, 50);
+    persistState();
+    renderLoginHistory();
+  }
+
+  function updateHistoryName(uid, name) {
+    if (!uid || !name) return;
+    var changed = false;
+    state.loginHistory = state.loginHistory.map(function (item) {
+      if (normalizeUid(item.uid) !== normalizeUid(uid)) return item;
+      changed = true;
+      return Object.assign({}, item, { name: String(name).trim() });
+    });
+    if (changed) {
+      persistState();
+      renderLoginHistory();
+    }
   }
 
   function getFacebookTab(callback) {
@@ -294,7 +369,7 @@
       showToast('এই ID Off আছে — আবার paste করলে On হবে।', '#f59e0b');
       return;
     }
-    upsertAccount(state.account, false);
+    recordLoginAccount(state.account);
     state.loading = true;
     state.currentTabId = null;
     successBox.style.display = 'none';
@@ -316,6 +391,12 @@
           isAuto: true
         }, function (response) {
           if (response && response.ok) setProgress('UID ও Password দেওয়া হচ্ছে...', 35);
+          if (response && response.blocked) {
+            state.loading = false;
+            updateLoginButton('Admin দ্বারা বন্ধ', false);
+            setProgress('এই ID-এর login Admin বন্ধ করেছে', 0);
+            showToast(response.reason || 'এই ID এখন login করতে পারবে না।', '#e53e3e');
+          }
         });
         return;
       }
@@ -334,6 +415,13 @@
           pass: state.account.pass,
           secret: state.account.secret,
           isAuto: true
+        }, function (response) {
+          if (response && response.blocked) {
+            state.loading = false;
+            updateLoginButton('Admin দ্বারা বন্ধ', false);
+            setProgress('এই ID-এর login Admin বন্ধ করেছে', 0);
+            showToast(response.reason || 'এই ID এখন login করতে পারবে না।', '#e53e3e');
+          }
         });
       });
     });
@@ -341,8 +429,9 @@
 
   function handleParsedInput(autoStart) {
     var account = parseCredentials(comboInput.value);
-    renderParsed(account);
     if (!account) {
+      state.lastAutoSignature = '';
+      renderParsed(null);
       saveBtn.disabled = true;
       successBox.style.display = 'none';
       return;
@@ -352,14 +441,17 @@
       delete state.disabledUids[normalizeUid(account.uid)];
       showToast('এই ID আবার Auto On হয়েছে ✅', '#25D366');
     }
-    upsertAccount(account, false);
+    renderParsed(account);
     persistState();
     renderSavedAccounts();
+    var signature = account.uid + '\u0000' + account.pass + '\u0000' + account.secret;
     if (autoStart && !state.loading) {
+      if (state.lastAutoSignature === signature) return;
+      state.lastAutoSignature = signature;
       clearTimeout(state.autoStartTimer);
       state.autoStartTimer = setTimeout(function () {
         if (state.account && sameAccount(state.account, account)) runLogin();
-      }, 450);
+      }, 180);
     }
   }
 
@@ -445,13 +537,100 @@
     });
   }
 
+  function renderLoginHistory() {
+    if (!loginHistoryList || !loginHistoryWrap) return;
+    loginHistoryList.textContent = '';
+    if (!state.loginHistory.length) {
+      loginHistoryWrap.style.display = 'none';
+      return;
+    }
+    loginHistoryWrap.style.display = 'block';
+    state.loginHistory.forEach(function (account) {
+      var row = document.createElement('div');
+      row.className = 'saved-chip';
+      var main = document.createElement('button');
+      main.type = 'button';
+      main.className = 'chip-main';
+      main.title = 'এই login করা ID আবার ব্যবহার করুন';
+      var uidEl = document.createElement('span');
+      uidEl.className = 'chip-uid';
+      uidEl.textContent = account.name || ('UID ' + account.uid);
+      var meta = document.createElement('span');
+      meta.className = 'chip-meta';
+      meta.textContent = account.uid + ' · click করলে login';
+      if (account.secret) {
+        var badge = document.createElement('span');
+        badge.className = 'chip-2fa-badge';
+        badge.textContent = '2FA';
+        meta.appendChild(badge);
+      }
+      main.appendChild(uidEl);
+      main.appendChild(meta);
+      main.addEventListener('click', function () {
+        comboInput.value = account.uid + '\t' + account.pass + (account.secret ? '\t' + account.secret : '');
+        handleParsedInput(true);
+      });
+
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'chip-del';
+      remove.textContent = '×';
+      remove.title = 'এই login history মুছুন';
+      remove.addEventListener('click', function () {
+        state.loginHistory = state.loginHistory.filter(function (item) { return !sameAccount(item, account); });
+        persistState();
+        renderLoginHistory();
+      });
+      row.appendChild(main);
+      row.appendChild(remove);
+      loginHistoryList.appendChild(row);
+    });
+  }
+
+  function renderBins() {
+    if (!binList) return;
+    binList.textContent = '';
+    state.bins.forEach(function (bin) {
+      var chip = document.createElement('span');
+      chip.className = 'bin-chip';
+      chip.appendChild(document.createTextNode(bin));
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'bin-delete';
+      remove.textContent = '×';
+      remove.title = 'BIN মুছুন';
+      remove.addEventListener('click', function () {
+        state.bins = state.bins.filter(function (item) { return item !== bin; });
+        persistState();
+        renderBins();
+      });
+      chip.appendChild(remove);
+      binList.appendChild(chip);
+    });
+  }
+
   function restoreState(data) {
     var rawAccounts = Array.isArray(data.savedAccounts) ? data.savedAccounts : [];
+    var profileNames = data.loginProfileNames && typeof data.loginProfileNames === 'object' ? data.loginProfileNames : {};
     state.accounts = rawAccounts.filter(function (item) {
       return item && item.uid && item.pass;
     }).map(function (item) {
       return { uid: normalizeUid(item.uid), pass: String(item.pass), secret: String(item.secret || ''), updatedAt: item.updatedAt || 0 };
     });
+    state.loginHistory = Array.isArray(data.loginHistory) ? data.loginHistory.filter(function (item) {
+      return item && item.uid && item.pass;
+    }).map(function (item) {
+      return {
+        uid: normalizeUid(item.uid),
+        pass: String(item.pass),
+        secret: String(item.secret || ''),
+        name: String(item.name || profileNames[normalizeUid(item.uid)] || ''),
+        lastLoginAt: item.lastLoginAt || 0
+      };
+    }) : [];
+    state.bins = Array.isArray(data.savedBins) ? data.savedBins.map(function (item) {
+      return String(item || '').trim();
+    }).filter(Boolean).slice(0, 100) : [];
     if (!state.accounts.length && data.savedCreds && data.savedCreds.uid && data.savedCreds.pass) {
       state.accounts = [{
         uid: normalizeUid(data.savedCreds.uid),
@@ -472,6 +651,8 @@
       saveBtn.disabled = true;
     }
     renderSavedAccounts();
+    renderLoginHistory();
+    renderBins();
     sendMessage({ type: 'GET_SESSION' }, function (response) {
       if (response && response.session && response.session.active) {
         state.loading = true;
@@ -491,6 +672,23 @@
 
   function handleBackgroundMessage(message) {
     if (!message) return;
+    if (message.type === 'LOGIN_PROFILE') {
+      updateHistoryName(message.uid, message.name);
+      return;
+    }
+    if (message.type === 'ADMIN_CONFIG') {
+      handleAdminConfig(message);
+      return;
+    }
+    if (message.type === 'ADMIN_BLOCKED') {
+      state.loading = false;
+      state.lastAutoSignature = '';
+      updateLoginButton('Admin দ্বারা বন্ধ', false);
+      setProgress('এই ID-এর login Admin বন্ধ করেছে', 0);
+      showAdminBanner('🚫 ' + (message.reason || 'এই ID-এর login Admin বন্ধ করেছে।'), '#fca5a5');
+      showToast(message.reason || 'এই ID এখন login করতে পারবে না।', '#e53e3e');
+      return;
+    }
     if (message.type === 'AUTO_LOGIN_STARTED') {
       state.loading = true;
       state.currentTabId = message.tabId || state.currentTabId;
@@ -515,6 +713,7 @@
       if (status) setProgress(status[0], status[1]);
       if (message.msg === 'need_secret') {
         state.loading = false;
+        state.lastAutoSignature = '';
         updateLoginButton('2FA Secret দিন', false);
         showToast('এই login-এর জন্য UID[Tab]Pass[Tab]2FA Secret দিন।', '#f59e0b');
       }
@@ -524,11 +723,12 @@
       }
       if (message.msg === 'success') {
         state.loading = false;
+        state.lastAutoSignature = '';
         setProgress('লগইন সম্পন্ন! ✅', 100);
         updateLoginButton('লগইন সম্পন্ন ✅', false);
         usedCodeEl.textContent = 'Login Success ✅';
         successBox.style.display = 'block';
-        if (state.account) upsertAccount(state.account, false);
+        if (state.account) recordLoginAccount(state.account);
         showToast('লগইন সফল! UID/Password সেভ আছে ✅', '#25D366');
       }
     }
@@ -554,7 +754,6 @@
   comboInput.addEventListener('paste', function () {
     setTimeout(function () { handleParsedInput(true); }, 20);
   });
-  loginBtn.addEventListener('click', runLogin);
   stopBtn.addEventListener('click', stopCurrent);
   saveBtn.addEventListener('click', function () {
     var account = parseCredentials(comboInput.value);
@@ -576,16 +775,32 @@
   $('clearAllBtn').addEventListener('click', function () {
     if (!window.confirm('সব সেভ করা ID মুছে ফেলবেন?')) return;
     state.accounts = [];
+    state.loginHistory = [];
+    state.bins = [];
     state.disabledUids = {};
-    storageSet({ savedAccounts: [], disabledUids: {}, comboDraft: '' });
+    storageSet({ savedAccounts: [], loginHistory: [], savedBins: [], disabledUids: {}, comboDraft: '' });
     comboInput.value = '';
     renderParsed(null);
     renderSavedAccounts();
+    renderLoginHistory();
+    renderBins();
   });
   $('copyUid').addEventListener('click', function () { if (state.account) copyText(state.account.uid); });
   $('copyPass').addEventListener('click', function () { if (state.account) copyText(state.account.pass); });
   $('copySecret').addEventListener('click', function () { if (state.account) copyText(state.account.secret); });
   $('copyTotp').addEventListener('click', function () { copyText(state.totpCode); });
+  saveBinBtn.addEventListener('click', function () {
+    var value = String(binInput.value || '').trim().replace(/\s+/g, '');
+    if (!value) return showToast('BIN number লিখুন।', '#e53e3e');
+    if (state.bins.indexOf(value) === -1) {
+      state.bins.unshift(value);
+      state.bins = state.bins.slice(0, 100);
+      persistState();
+      renderBins();
+    }
+    binInput.value = '';
+    showToast('BIN save হয়েছে ✅', '#25D366');
+  });
 
   try {
     chrome.runtime.onMessage.addListener(handleBackgroundMessage);
