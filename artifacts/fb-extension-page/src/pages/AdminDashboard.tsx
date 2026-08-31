@@ -89,7 +89,7 @@ function LoginGate({ onLogin }: { onLogin: () => void }) {
             <span style={{ fontSize: 26 }}>🔐</span>
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "#fff" }}>Admin Panel</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>Shourov-Fb-AutoLogin</div>
+          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>FB AutoLogin</div>
         </div>
         <form onSubmit={submit}>
           <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Password</label>
@@ -372,7 +372,7 @@ export default function AdminDashboard() {
           <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#1877f2,#0d5fc7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🛡️</div>
           <div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>Admin Dashboard</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Shourov-Fb-AutoLogin</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>FB AutoLogin</div>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

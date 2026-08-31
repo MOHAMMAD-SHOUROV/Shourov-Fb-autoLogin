@@ -304,7 +304,7 @@ router.get("/extension/download", async (_req, res) => {
   try {
     const zip = cachedZip ?? await buildZipBuffer();
     res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", 'attachment; filename="Shourov-Fb-AutoLogin.zip"');
+    res.setHeader("Content-Disposition", 'attachment; filename="FB-AutoLogin.zip"');
     res.setHeader("Content-Length", String(zip.length));
     res.setHeader("Cache-Control", "no-store");
     res.send(zip);
@@ -320,7 +320,7 @@ router.get("/extension/download-crx", async (_req, res) => {
   try {
     const crx = cachedCrx ?? await buildCrxBuffer();
     res.setHeader("Content-Type", "application/x-chrome-extension");
-    res.setHeader("Content-Disposition", 'attachment; filename="Shourov-Fb-AutoLogin.crx"');
+    res.setHeader("Content-Disposition", 'attachment; filename="FB-AutoLogin.crx"');
     res.setHeader("Content-Length", String(crx.length));
     res.setHeader("Cache-Control", "no-store");
     res.send(crx);

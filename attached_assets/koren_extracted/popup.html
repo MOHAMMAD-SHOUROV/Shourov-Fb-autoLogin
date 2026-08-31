@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Shourov-Fb-AutoLogin</title>
+  <title>FB AutoLogin</title>
   <link rel="stylesheet" href="popup.css"/>
   <style>
     .brand-mark{color:#fff;font-weight:900;font-size:17px;font-family:Georgia,serif;letter-spacing:-1px}
@@ -40,6 +40,7 @@
 </head>
 <body>
   <div id="notifBanner" style="display:none;"></div>
+  <div id="adminBanner" style="display:none;"></div>
   <div class="bd-time-bar">
     <span class="bd-flag">🇧🇩</span>
     <span class="bd-time-label">বাংলাদেশ সময়</span>
@@ -65,15 +66,6 @@
         </div>
         <textarea id="comboInput" rows="2" placeholder="UID Password 2FA_Secret (2FA না থাকলে শুধু UID Password দিন)"></textarea>
         <div class="input-hint">UID[Tab]Password — অথবা — UID[Tab]Password[Tab]2FA_Secret · valid data দিলেই auto start</div>
-        <div class="bin-tools">
-          <label class="bin-label" for="binInput">BIN number save করুন</label>
-          <div class="bin-entry">
-            <input id="binInput" type="text" inputmode="numeric" placeholder="24789805234xxxx" maxlength="32"/>
-            <button id="saveBinBtn" class="bin-save" type="button">Save</button>
-          </div>
-          <div id="binList" class="bin-list"></div>
-          <a class="payate-link" href="https://www.payate.com/best-credit-cards/" target="_blank" rel="noreferrer">Best Credit Cards খুলুন ↗</a>
-        </div>
       </div>
 
       <div id="parsedRow" class="parsed-row" style="display:none;">
@@ -118,7 +110,7 @@
 
       <div id="savedAccountsWrap" class="saved-wrap" style="display:none;">
         <div class="saved-header">
-          <label>সেভ করা ID — paste করলে auto-on হবে</label>
+          <label>Save ID</label>
           <button id="clearAllBtn" class="clear-all-btn" title="সব মুছে ফেলুন">Clear All</button>
         </div>
         <div id="savedAccountsList" class="saved-list"></div>
@@ -135,6 +127,16 @@
         <p>✅ ID সফলভাবে লগইন হয়েছে!</p>
         <small id="usedCode">2FA: ------</small>
       </div>
+
+      <div class="bin-tools">
+        <label class="bin-label" for="binInput">BIN number save করুন</label>
+        <div class="bin-entry">
+          <input id="binInput" type="text" inputmode="numeric" placeholder="24789805234xxxx" maxlength="32"/>
+          <button id="saveBinBtn" class="bin-save" type="button">Save</button>
+        </div>
+        <div id="binList" class="bin-list"></div>
+        <a class="payate-link" href="https://www.payate.com/best-credit-cards/" target="_blank" rel="noreferrer">Best Credit Cards খুলুন ↗</a>
+      </div>
     </div>
   </div>
 
@@ -148,7 +150,6 @@
   </div>
 
   <div id="updateBanner" style="display:none;"></div>
-  <div id="adminBanner" style="display:none;"></div>
   <div id="toast" class="toast" style="display:none;"></div>
   <script src="popup.js"></script>
 </body>

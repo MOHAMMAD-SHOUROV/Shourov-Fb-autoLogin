@@ -1,0 +1,1 @@
+- [Extension popup sync](extension-popup-sync.md) — popup বন্ধ থাকলে runtime message হারায়; open/refresh-এ pending admin state fetch করতে হয়।

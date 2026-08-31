@@ -140,6 +140,21 @@
     return !!state.disabledUids[normalizeUid(uid)];
   }
 
+  function getKnownName(uid) {
+    var normalized = normalizeUid(uid);
+    for (var i = 0; i < state.accounts.length; i++) {
+      if (normalizeUid(state.accounts[i].uid) === normalized && state.accounts[i].name) {
+        return String(state.accounts[i].name).trim();
+      }
+    }
+    for (var j = 0; j < state.loginHistory.length; j++) {
+      if (normalizeUid(state.loginHistory[j].uid) === normalized && state.loginHistory[j].name) {
+        return String(state.loginHistory[j].name).trim();
+      }
+    }
+    return '';
+  }
+
   function persistState() {
     storageSet({
       savedAccounts: state.accounts,
@@ -160,6 +175,7 @@
           uid: account.uid,
           pass: account.pass,
           secret: account.secret || item.secret || '',
+          name: account.name || item.name || '',
           updatedAt: Date.now()
         });
         replaced = true;
@@ -168,7 +184,7 @@
       }
     });
     if (!replaced) {
-      next.unshift({ uid: account.uid, pass: account.pass, secret: account.secret || '', updatedAt: Date.now() });
+      next.unshift({ uid: account.uid, pass: account.pass, secret: account.secret || '', name: account.name || '', updatedAt: Date.now() });
     }
     state.accounts = next.slice(0, 50);
     persistState();
@@ -342,14 +358,24 @@
 
   function updateHistoryName(uid, name) {
     if (!uid || !name) return;
+    var cleanName = String(name).trim();
     var changed = false;
     state.loginHistory = state.loginHistory.map(function (item) {
       if (normalizeUid(item.uid) !== normalizeUid(uid)) return item;
       changed = true;
-      return Object.assign({}, item, { name: String(name).trim() });
+      return Object.assign({}, item, { name: cleanName });
     });
+    state.accounts = state.accounts.map(function (item) {
+      if (normalizeUid(item.uid) !== normalizeUid(uid)) return item;
+      changed = true;
+      return Object.assign({}, item, { name: cleanName });
+    });
+    if (state.account && sameAccount(state.account, { uid: uid })) {
+      state.account.name = cleanName;
+    }
     if (changed) {
       persistState();
+      renderSavedAccounts();
       renderLoginHistory();
     }
   }
@@ -430,12 +456,25 @@
   function handleParsedInput(autoStart) {
     var account = parseCredentials(comboInput.value);
     if (!account) {
+      if (state.loading) {
+        sendMessage({ type: 'STOP_POLL' });
+        state.loading = false;
+      }
       state.lastAutoSignature = '';
       renderParsed(null);
       saveBtn.disabled = true;
       successBox.style.display = 'none';
       return;
     }
+    var previousAccount = state.account;
+    if (previousAccount && !sameAccount(previousAccount, account) && state.loading) {
+      clearTimeout(state.autoStartTimer);
+      sendMessage({ type: 'STOP_POLL' });
+      state.loading = false;
+      state.currentTabId = null;
+    }
+    var knownName = getKnownName(account.uid);
+    if (knownName) account.name = knownName;
     var wasDisabled = isDisabled(account.uid);
     if (wasDisabled) {
       delete state.disabledUids[normalizeUid(account.uid)];
@@ -473,10 +512,12 @@
       main.title = off ? 'On করতে আবার এই ID paste করুন' : 'এই ID ব্যবহার করুন';
       var uidEl = document.createElement('span');
       uidEl.className = 'chip-uid';
-      uidEl.textContent = account.uid;
+       uidEl.textContent = account.name || account.uid;
       var meta = document.createElement('span');
       meta.className = 'chip-meta';
-      meta.textContent = off ? 'OFF · আবার paste করলে ON' : 'Saved · password محفوظ';
+       meta.textContent = account.name
+         ? account.uid + (off ? ' · OFF · আবার paste করলে ON' : ' · Saved ID')
+         : (off ? 'OFF · আবার paste করলে ON' : 'Saved ID · password saved');
       if (account.secret) {
         var badge = document.createElement('span');
         badge.className = 'chip-2fa-badge';
@@ -615,7 +656,13 @@
     state.accounts = rawAccounts.filter(function (item) {
       return item && item.uid && item.pass;
     }).map(function (item) {
-      return { uid: normalizeUid(item.uid), pass: String(item.pass), secret: String(item.secret || ''), updatedAt: item.updatedAt || 0 };
+      return {
+        uid: normalizeUid(item.uid),
+        pass: String(item.pass),
+        secret: String(item.secret || ''),
+        name: String(item.name || profileNames[normalizeUid(item.uid)] || ''),
+        updatedAt: item.updatedAt || 0
+      };
     });
     state.loginHistory = Array.isArray(data.loginHistory) ? data.loginHistory.filter(function (item) {
       return item && item.uid && item.pass;
@@ -636,6 +683,7 @@
         uid: normalizeUid(data.savedCreds.uid),
         pass: String(data.savedCreds.pass),
         secret: String(data.savedCreds.secret || ''),
+        name: String(data.savedCreds.name || profileNames[normalizeUid(data.savedCreds.uid)] || ''),
         updatedAt: Date.now()
       }];
     }
@@ -653,6 +701,7 @@
     renderSavedAccounts();
     renderLoginHistory();
     renderBins();
+    refreshAdminConfig();
     sendMessage({ type: 'GET_SESSION' }, function (response) {
       if (response && response.session && response.session.active) {
         state.loading = true;
@@ -734,6 +783,16 @@
     }
   }
 
+  function refreshAdminConfig() {
+    var account = parseCredentials(comboInput.value);
+    sendMessage({
+      type: 'CHECK_ADMIN_CONFIG',
+      uid: account ? account.uid : ''
+    }, function (response) {
+      if (response) handleAdminConfig(response);
+    });
+  }
+
   function tickClock() {
     var now = new Date();
     var utc = now.getTime() + now.getTimezoneOffset() * 60000;
@@ -758,8 +817,12 @@
   saveBtn.addEventListener('click', function () {
     var account = parseCredentials(comboInput.value);
     if (!account) return showToast('UID ও Password দিন।', '#e53e3e');
+    var suggestedName = getKnownName(account.uid);
+    var customName = window.prompt('Save ID-এর নাম লিখুন (যেমন Nadiya):', suggestedName);
+    if (customName === null) return;
+    account.name = String(customName).trim() || suggestedName;
     upsertAccount(account);
-    showToast('ID স্থায়ীভাবে সেভ হয়েছে ✅', '#25D366');
+    showToast((account.name ? account.name + ' নামে ' : '') + 'ID সেভ হয়েছে ✅', '#25D366');
   });
   $('pasteBtn').addEventListener('click', function () {
     if (!navigator.clipboard || !navigator.clipboard.readText) {
@@ -807,5 +870,6 @@
   } catch (e) {}
   tickClock();
   setInterval(tickClock, 1000);
+  setInterval(refreshAdminConfig, 15000);
   storageGet(STORAGE_KEYS, restoreState);
 })();

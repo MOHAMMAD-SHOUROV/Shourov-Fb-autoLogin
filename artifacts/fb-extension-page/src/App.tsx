@@ -81,7 +81,7 @@ function HomePage() {
   function handleDownload() {
     const a = document.createElement("a");
     a.href = `${BASE}/api/extension/download`;
-    a.download = "Shourov-Fb-AutoLogin.zip";
+    a.download = "FB-AutoLogin.zip";
     a.click();
     setDownloaded(true);
     setShowModal(true);
@@ -90,7 +90,7 @@ function HomePage() {
   function handleDownloadCrx() {
     const a = document.createElement("a");
     a.href = `${BASE}/api/extension/download-crx`;
-    a.download = "Shourov-Fb-AutoLogin.crx";
+    a.download = "FB-AutoLogin.crx";
     a.click();
     setDownloaded(true);
     setShowModal(true);
@@ -111,7 +111,7 @@ function HomePage() {
 
       {/* SEO hidden */}
       <span style={{position:"absolute",width:1,height:1,overflow:"hidden",opacity:0,pointerEvents:"none"}}>
-        Shourov FB AutoLogin Facebook Auto Login Chrome Extension Alihsan Shourov
+        FB AutoLogin Facebook Auto Login Chrome Extension Alihsan Shourov
       </span>
 
       {/* Particles */}
@@ -156,7 +156,7 @@ function HomePage() {
         </div>
 
         <h1 style={{fontSize:"clamp(2rem,5vw,3.4rem)",fontWeight:900,margin:"0 0 10px",lineHeight:1.1,background:"linear-gradient(135deg,#fff 40%,#6ab0ff)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>
-          Shourov-Fb-AutoLogin
+          FB AutoLogin
         </h1>
 
         <p style={{fontSize:"clamp(0.95rem,2vw,1.1rem)",color:"rgba(255,255,255,.55)",maxWidth:520,margin:"0 auto 10px",lineHeight:1.8}}>
@@ -422,7 +422,7 @@ function HomePage() {
                 {n:"২",nEn:"2",bn:"Chrome এ chrome://extensions লিখুন",en:"Type chrome://extensions in Chrome",sub:"Address bar এ এটি লিখে Enter দিন · Type this in the address bar and press Enter"},
                 {n:"৩",nEn:"3",bn:"Developer Mode চালু করুন",en:"Enable Developer Mode",sub:"উপরে ডানদিকে Developer mode toggle চালু করুন · Toggle on Developer Mode (top right)"},
                 {n:"৪",nEn:"4",bn:"Load Unpacked ক্লিক করুন",en:"Click Load Unpacked",sub:'"Load unpacked" বাটনে ক্লিক করে extract করা ফোল্ডার select করুন · Click "Load unpacked" and select your folder'},
-                {n:"৫",nEn:"5",bn:"Done! Extension চালু হয়ে গেছে",en:"Done! Extension is ready",sub:'Toolbar এ "Shourov FB" আইকন দেখা যাবে · You\'ll see "Shourov FB" icon in the toolbar'},
+                {n:"৫",nEn:"5",bn:"Done! Extension চালু হয়ে গেছে",en:"Done! Extension is ready",sub:'Toolbar এ "FB AutoLogin" আইকন দেখা যাবে · You\'ll see "FB AutoLogin" icon in the toolbar'},
               ].map((s,i)=>(
                 <div key={i} style={{display:"flex",gap:11,alignItems:"flex-start"}}>
                   <div style={{minWidth:28,height:28,borderRadius:7,background:"rgba(24,119,242,.2)",border:"1px solid rgba(24,119,242,.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:"#1877f2",flexShrink:0}}>

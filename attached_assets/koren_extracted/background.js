@@ -859,6 +859,13 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
     });
     return true; // async
 
+  } else if(msg.type === 'CHECK_ADMIN_CONFIG') {
+    checkAdminAccess(msg.uid || '', function(config) {
+      publishAdminConfig(config);
+      respond(config);
+    });
+    return true; // async
+
   } else if(msg.type === 'SAVE_CREDS') {
     chrome.storage.local.set({ savedCreds: { uid: msg.uid, pass: msg.pass, secret: msg.secret || '' } });
     respond({ ok: true });
