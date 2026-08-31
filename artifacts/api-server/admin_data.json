@@ -24,9 +24,16 @@
       "loginCount": 0,
       "lastSeen": "2026-08-31T21:43:00.068Z",
       "createdAt": "2026-08-31T21:43:00.068Z"
+    },
+    "login-retry-test": {
+      "uid": "login-retry-test",
+      "isBlocked": false,
+      "loginCount": 0,
+      "lastSeen": "2026-08-31T21:53:55.824Z",
+      "createdAt": "2026-08-31T21:53:55.824Z"
     }
   },
   "extensionVersion": "1.6.3",
-  "downloadCount": 11,
+  "downloadCount": 13,
   "lastResetAt": "2026-08-31T21:12:29.674Z"
 }

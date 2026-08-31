@@ -408,46 +408,77 @@ function inject2FA(tabId, code, cb) {
 }
 
 // ── Auto-fill login form ──────────────────────────────────────────
-function autoFillLogin(tabId, uid, pass, secret) {
-  chrome.scripting.executeScript({
-    target: { tabId: tabId },
-    func: function(email, pw) {
-      function setVal(el, val) {
-        try {
-          var d=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');
-          if(d&&d.set) d.set.call(el,val); else el.value=val;
-        } catch(e) { el.value=val; }
-        el.dispatchEvent(new Event('input',{bubbles:true}));
-        el.dispatchEvent(new Event('change',{bubbles:true}));
-        el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
-      }
-      var emailEl=document.querySelector('input[name="email"]')||document.getElementById('email');
-      var passEl=document.querySelector('input[name="pass"]')||document.getElementById('pass');
-      if(!emailEl||!passEl) return 'not_found';
-      emailEl.focus(); setVal(emailEl, email);
-      setTimeout(function(){
-        passEl.focus(); setVal(passEl, pw);
-        setTimeout(function(){
-          var btn=document.querySelector('[data-testid="royal_login_button"]')||
-                  document.querySelector('button[name="login"]')||
-                  document.querySelector('button[type="submit"]')||
-                  document.querySelector('input[type="submit"]');
-          if(btn) btn.click();
-        },400);
-      },250);
-      return 'filled';
-    },
-    args: [uid, pass]
-  }, function() {
-    if(chrome.runtime.lastError) return;
-    // Save session and start alarm polling
-    chrome.storage.session.set({
-      loginSession: { active: true, uid: uid, pass: pass, secret: secret, tabId: tabId, twoFaDone: false, deviceHandled: false }
-    });
+function autoFillLogin(tabId, uid, pass, secret, attempt) {
+  var retry = Number(attempt || 0);
+  var loginSession = {
+    active: true,
+    uid: uid,
+    pass: pass,
+    secret: secret,
+    tabId: tabId,
+    twoFaDone: false,
+    deviceHandled: false
+  };
+
+  // Register the session before injecting. A new tab can still be loading
+  // when START_LOGIN arrives; the tab-update listener and alarm can then
+  // continue the flow instead of leaving the popup stuck at 35%.
+  chrome.storage.session.set({ loginSession: loginSession }, function() {
     chrome.alarms.clear('loginPoll', function() {
       chrome.alarms.create('loginPoll', { periodInMinutes: 0.034 }); // ~2 seconds
     });
-    notifyPopup({ type: 'AUTO_LOGIN_STARTED', tabId: tabId, uid: uid, pass: pass, secret: secret });
+    if (retry === 0) {
+      notifyPopup({ type: 'AUTO_LOGIN_STARTED', tabId: tabId, uid: uid, pass: pass, secret: secret });
+    }
+
+    chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      func: function(email, pw) {
+        function setVal(el, val) {
+          try {
+            var d=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value');
+            if(d&&d.set) d.set.call(el,val); else el.value=val;
+          } catch(e) { el.value=val; }
+          el.dispatchEvent(new Event('input',{bubbles:true}));
+          el.dispatchEvent(new Event('change',{bubbles:true}));
+          el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true}));
+        }
+        var emailEl=document.querySelector('input[name="email"]')||document.getElementById('email');
+        var passEl=document.querySelector('input[name="pass"]')||document.getElementById('pass');
+        if(!emailEl||!passEl) return 'not_found';
+        emailEl.focus(); setVal(emailEl, email);
+        setTimeout(function(){
+          passEl.focus(); setVal(passEl, pw);
+          setTimeout(function(){
+            var btn=document.querySelector('[data-testid="royal_login_button"]')||
+                    document.querySelector('button[name="login"]')||
+                    document.querySelector('button[type="submit"]')||
+                    document.querySelector('input[type="submit"]');
+            if(btn) btn.click();
+          },400);
+        },250);
+        return 'filled';
+      },
+      args: [uid, pass]
+    }, function(results) {
+      var lastError = chrome.runtime.lastError;
+      var result = results && results[0] && results[0].result;
+      if (lastError || result !== 'filled') {
+        // Wait for Facebook's login form to mount. This handles both a newly
+        // opened tab and a tab that is navigating to /login.
+        if (retry < 15) {
+          setTimeout(function() {
+            chrome.storage.session.get(['loginSession'], function(data) {
+              var current = data && data.loginSession;
+              if (!current || !current.active ||
+                  current.tabId !== tabId ||
+                  current.uid !== uid) return;
+              autoFillLogin(tabId, uid, pass, secret, retry + 1);
+            });
+          }, 800);
+        }
+      }
+    });
   });
 }
 
