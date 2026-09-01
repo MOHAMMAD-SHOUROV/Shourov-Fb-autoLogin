@@ -15,6 +15,11 @@ artifacts/fb-extension-page-v2/dist/
 # dependencies
 node_modules
 
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+
 # IDEs and editors
 /.idea
 .project

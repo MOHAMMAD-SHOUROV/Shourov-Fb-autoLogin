@@ -2,7 +2,9 @@ import { Router, Request, Response, NextFunction } from "express";
 import { readData, writeData } from "../lib/admin-data";
 import { rebuildExtensionCache } from "./extension";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "shourov247898";
+// Keep the admin password in the hosting provider's secret manager.
+// Without it, the public extension can still run, but admin actions stay locked.
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "";
 const router = Router();
 
 function auth(req: Request, res: Response, next: NextFunction) {
