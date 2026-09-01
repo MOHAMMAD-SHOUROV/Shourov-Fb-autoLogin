@@ -20,8 +20,8 @@ router.post("/admin/auth", (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
-router.get("/admin/stats", auth, (_req: Request, res: Response) => {
-  const data = readData();
+router.get("/admin/stats", auth, async (_req: Request, res: Response) => {
+  const data = await readData();
   const users = Object.values(data.users);
   res.json({
     totalUsers: users.length,
@@ -33,26 +33,26 @@ router.get("/admin/stats", auth, (_req: Request, res: Response) => {
   });
 });
 
-router.get("/admin/version", auth, (_req: Request, res: Response) => {
-  const data = readData();
+router.get("/admin/version", auth, async (_req: Request, res: Response) => {
+  const data = await readData();
   res.json({ version: data.extensionVersion ?? "1.6.3" });
 });
 
-router.put("/admin/version", auth, (req: Request, res: Response) => {
+router.put("/admin/version", auth, async (req: Request, res: Response) => {
   const { version } = req.body as { version?: string };
   if (!version?.trim()) {
     return void res.status(400).json({ error: "version is required" });
   }
-  const data = readData();
+  const data = await readData();
   data.extensionVersion = version.trim();
-  writeData(data);
+  await writeData(data);
   res.json({ ok: true, version: data.extensionVersion });
   // Rebuild extension ZIP/CRX cache so next download has the updated version baked in
   rebuildExtensionCache().catch(() => {});
 });
 
-router.get("/admin/users", auth, (_req: Request, res: Response) => {
-  const data = readData();
+router.get("/admin/users", auth, async (_req: Request, res: Response) => {
+  const data = await readData();
   const users = Object.values(data.users).sort(
     (a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -60,9 +60,9 @@ router.get("/admin/users", auth, (_req: Request, res: Response) => {
   res.json({ users });
 });
 
-router.put("/admin/users/:uid/block", auth, (req: Request, res: Response) => {
-  const data = readData();
-  const uid = req.params.uid;
+router.put("/admin/users/:uid/block", auth, async (req: Request, res: Response) => {
+  const data = await readData();
+  const uid = String(req.params.uid);
   if (!data.users[uid]) {
     data.users[uid] = {
       uid,
@@ -74,62 +74,63 @@ router.put("/admin/users/:uid/block", auth, (req: Request, res: Response) => {
   } else {
     data.users[uid].isBlocked = true;
   }
-  writeData(data);
+  await writeData(data);
   res.json({ ok: true });
 });
 
 router.put(
   "/admin/users/:uid/unblock",
   auth,
-  (req: Request, res: Response) => {
-    const data = readData();
-    if (data.users[req.params.uid]) {
-      data.users[req.params.uid].isBlocked = false;
-      writeData(data);
+  async (req: Request, res: Response) => {
+    const data = await readData();
+    const uid = String(req.params.uid);
+    if (data.users[uid]) {
+      data.users[uid].isBlocked = false;
+      await writeData(data);
     }
     res.json({ ok: true });
   },
 );
 
-router.delete("/admin/users/:uid", auth, (req: Request, res: Response) => {
-  const data = readData();
-  delete data.users[req.params.uid];
-  writeData(data);
+router.delete("/admin/users/:uid", auth, async (req: Request, res: Response) => {
+  const data = await readData();
+  delete data.users[String(req.params.uid)];
+  await writeData(data);
   res.json({ ok: true });
 });
 
-router.put("/admin/extension/toggle", auth, (_req: Request, res: Response) => {
-  const data = readData();
+router.put("/admin/extension/toggle", auth, async (_req: Request, res: Response) => {
+  const data = await readData();
   data.extensionEnabled = !data.extensionEnabled;
-  writeData(data);
+  await writeData(data);
   res.json({ ok: true, extensionEnabled: data.extensionEnabled });
 });
 
 // Broadcast message — send notification to all extension popups
-router.put("/admin/broadcast", auth, (req: Request, res: Response) => {
+router.put("/admin/broadcast", auth, async (req: Request, res: Response) => {
   const { message } = req.body as { message?: string };
-  const data = readData();
+  const data = await readData();
   data.broadcastMessage = message?.trim() || null;
-  writeData(data);
+  await writeData(data);
   res.json({ ok: true, broadcastMessage: data.broadcastMessage });
 });
 
-router.delete("/admin/broadcast", auth, (_req: Request, res: Response) => {
-  const data = readData();
+router.delete("/admin/broadcast", auth, async (_req: Request, res: Response) => {
+  const data = await readData();
   data.broadcastMessage = null;
-  writeData(data);
+  await writeData(data);
   res.json({ ok: true });
 });
 
-router.put("/admin/users/:uid/notify", auth, (req: Request, res: Response) => {
+router.put("/admin/users/:uid/notify", auth, async (req: Request, res: Response) => {
   const { message } = req.body as { message?: string };
-  const data = readData();
-  const uid = req.params.uid;
+  const data = await readData();
+  const uid = String(req.params.uid);
   if (!data.users[uid]) {
     return void res.status(404).json({ error: "User not found" });
   }
   data.users[uid].notification = message?.trim() || null;
-  writeData(data);
+  await writeData(data);
   res.json({ ok: true });
 });
 

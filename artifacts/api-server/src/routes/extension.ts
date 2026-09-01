@@ -203,8 +203,8 @@ function patchVersion(source: string, version: string): string {
   return source.replace(/var myVersion\s*=\s*['"][^'"]*['"]/g, `var myVersion = '${version}'`);
 }
 
-function addExtensionFiles(archive: archiver.Archiver): void {
-  const currentVersion = (readData().extensionVersion ?? "1.6.3").trim();
+async function addExtensionFiles(archive: archiver.Archiver): Promise<void> {
+  const currentVersion = ((await readData()).extensionVersion ?? "1.6.3").trim();
   const entries = fs.readdirSync(EXT_DIR, { recursive: true }) as string[];
   for (const rel of entries) {
     const full = path.join(EXT_DIR, rel);
@@ -247,8 +247,9 @@ function buildZipBuffer(): Promise<Buffer> {
     const archive = archiver("zip", { zlib: { level: 6 } });
     archive.on("error", reject);
     archive.pipe(pt);
-    addExtensionFiles(archive);
-    archive.finalize();
+    addExtensionFiles(archive)
+      .then(() => archive.finalize())
+      .catch(reject);
   });
 }
 
@@ -309,7 +310,12 @@ router.get("/extension/download", async (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.send(zip);
     // Track download count (fire-and-forget after response sent)
-    try { const d = readData(); d.downloadCount = (d.downloadCount ?? 0) + 1; writeData(d); } catch {}
+    void readData()
+      .then((d) => {
+        d.downloadCount = (d.downloadCount ?? 0) + 1;
+        return writeData(d);
+      })
+      .catch((err) => logger.error(err, "Failed to track ZIP download"));
   } catch (err) {
     logger.error(err, "ZIP build failed");
     if (!res.headersSent) res.status(500).json({ error: "Failed to create extension zip" });
@@ -325,7 +331,12 @@ router.get("/extension/download-crx", async (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.send(crx);
     // Track download count (fire-and-forget after response sent)
-    try { const d = readData(); d.downloadCount = (d.downloadCount ?? 0) + 1; writeData(d); } catch {}
+    void readData()
+      .then((d) => {
+        d.downloadCount = (d.downloadCount ?? 0) + 1;
+        return writeData(d);
+      })
+      .catch((err) => logger.error(err, "Failed to track CRX download"));
   } catch (err) {
     logger.error(err, "CRX build failed");
     if (!res.headersSent) res.status(500).json({ error: "Failed to build CRX" });
@@ -334,10 +345,10 @@ router.get("/extension/download-crx", async (_req, res) => {
 
 // ── Extension check — called by the extension before login ──────
 
-router.get("/extension/check", (req, res) => {
+router.get("/extension/check", async (req, res) => {
   const uid = String(req.query.uid ?? "");
   const name = String(req.query.name ?? "").trim();
-  const data = readData();
+  const data = await readData();
 
   const latestVersion = data.extensionVersion ?? "1.6.3";
 
@@ -379,16 +390,16 @@ router.get("/extension/check", (req, res) => {
     dirty = true;
   }
 
-  if (dirty) writeData(data);
+  if (dirty) await writeData(data);
 
   res.json({ allowed: true, broadcastMessage: data.broadcastMessage ?? null, notification, latestVersion });
 });
 
 // ── Check name — public endpoint to check if a name is already used ──
-router.get("/extension/check-name", (req, res) => {
+router.get("/extension/check-name", async (req, res) => {
   const name = ((req.query.name as string) || "").trim().toLowerCase();
   if (!name) return void res.json({ exists: false });
-  const data = readData();
+  const data = await readData();
   const exists = Object.values(data.users).some(
     (u) => (u.name || "").trim().toLowerCase() === name,
   );
@@ -397,11 +408,11 @@ router.get("/extension/check-name", (req, res) => {
 
 // ── Ping — extension registers user activity after login ────────
 
-router.post("/extension/ping", (req, res) => {
+router.post("/extension/ping", async (req, res) => {
   const { uid, name } = req.body as { uid?: string; name?: string };
   if (!uid) return void res.json({ ok: false });
 
-  const data = readData();
+  const data = await readData();
   if (!data.users[uid]) {
     data.users[uid] = {
       uid,
@@ -418,7 +429,7 @@ router.post("/extension/ping", (req, res) => {
   }
   data.users[uid].loginCount = (data.users[uid].loginCount ?? 0) + 1;
   data.users[uid].lastSeen = new Date().toISOString();
-  writeData(data);
+  await writeData(data);
 
   res.json({ ok: true });
 });
