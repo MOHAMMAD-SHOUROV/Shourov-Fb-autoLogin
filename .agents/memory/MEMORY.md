@@ -1,3 +1,4 @@
 - [Extension popup sync](extension-popup-sync.md) — popup বন্ধ থাকলে runtime message হারায়; open/refresh-এ pending admin state fetch করতে হয়।
 - [Firestore setup](firebase-firestore-setup.md) — Firebase Admin credential যথেষ্ট নয়; target project-এ Firestore API ও database আগে enable করতে হয়।
 - [Extension admin identities](extension-admin-identities.md) — installation is the admin grouping key; successful Facebook UIDs must be tracked separately.
+- [Extension version gating](extension-version-gating.md) — admin version changes must gate old clients and patch generated extension manifests together.

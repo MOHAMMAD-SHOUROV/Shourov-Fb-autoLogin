@@ -356,6 +356,7 @@ export default function AdminDashboard() {
       getLoginEntries(u).some(entry => entry.uid.toLowerCase().includes(q));
   });
   const grouped = groupByInstallation(filtered);
+  const trackedIdCount = grouped.reduce((total, group) => total + group.loginIds.length, 0);
 
   async function blockGroup(g: NameGroup) {
     for (const u of g.users) if (!u.isBlocked) await blockUser(u.uid);
@@ -535,7 +536,12 @@ export default function AdminDashboard() {
       {/* User Table — grouped by name */}
       <div style={s.tableWrap}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>📋 User তালিকা <span style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.4)" }}>({grouped.length} জন)</span></div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>
+            📋 User তালিকা
+            <span style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.4)", marginLeft: 6 }}>
+              ({grouped.length} browser{grouped.length === 1 ? "" : "s"} · {trackedIdCount} real ID{trackedIdCount === 1 ? "" : "s"})
+            </span>
+          </div>
            <input
              placeholder="Browser user খুঁজুন..."
             value={search}
@@ -566,7 +572,9 @@ export default function AdminDashboard() {
                       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 3, display: "flex", flexWrap: "wrap", gap: 6 }}>
                         <span>💻 একই browser/extension-এর সব login</span>
                         <span>·</span>
-                        <span>🔑 <b style={{ color: "#a78bfa" }}>{g.totalLogins}</b> বার login</span>
+                         <span>🆔 <b style={{ color: "#60a5fa" }}>{g.loginIds.length}</b> real ID{g.loginIds.length === 1 ? "" : "s"}</span>
+                         <span>·</span>
+                         <span>🔑 <b style={{ color: "#a78bfa" }}>{g.totalLogins}</b> successful login{g.totalLogins === 1 ? "" : "s"}</span>
                         <span>·</span>
                         <span>🕒 {fmtDate(g.lastSeen)}</span>
                         <span>·</span>
