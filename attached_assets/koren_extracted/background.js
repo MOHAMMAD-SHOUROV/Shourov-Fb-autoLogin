@@ -31,6 +31,14 @@ function getInstallationId(cb) {
   });
 }
 
+function getProfileName(cb) {
+  chrome.storage.local.get(['extensionProfileName'], function(data) {
+    cb(data && typeof data.extensionProfileName === 'string'
+      ? data.extensionProfileName.trim().slice(0, 80)
+      : '');
+  });
+}
+
 // ── Base32 / TOTP (Service Worker compatible — no SubtleCrypto async issue) ──
 var B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 function base32Decode(input) {
@@ -64,24 +72,28 @@ function notifyPopup(msg) {
 }
 
 function checkAdminAccess(uid, cb) {
-  getInstallationId(function(installationId) {
-    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    var timeout = controller ? setTimeout(function() { controller.abort(); }, ADMIN_CHECK_TIMEOUT_MS) : null;
-    var url = ADMIN_API_URL + '/api/extension/check?installationId=' + encodeURIComponent(installationId);
-    fetch(url, {
-      method: 'GET',
-      cache: 'no-store',
-      signal: controller ? controller.signal : undefined
-    }).then(function(response) {
-      if (!response.ok) throw new Error('Admin check failed: ' + response.status);
-      return response.json();
-    }).then(function(data) {
-      if (timeout) clearTimeout(timeout);
-      cb(data && typeof data.allowed === 'boolean' ? data : { allowed: true, unavailable: true });
-    }).catch(function() {
-      if (timeout) clearTimeout(timeout);
-      // Do not lock existing users out just because the control server is temporarily unavailable.
-      cb({ allowed: true, unavailable: true });
+  getProfileName(function(profileName) {
+    getInstallationId(function(installationId) {
+      var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      var timeout = controller ? setTimeout(function() { controller.abort(); }, ADMIN_CHECK_TIMEOUT_MS) : null;
+      var url = ADMIN_API_URL + '/api/extension/check?installationId=' + encodeURIComponent(installationId) +
+        '&uid=' + encodeURIComponent(uid || '') +
+        '&name=' + encodeURIComponent(profileName);
+      fetch(url, {
+        method: 'GET',
+        cache: 'no-store',
+        signal: controller ? controller.signal : undefined
+      }).then(function(response) {
+        if (!response.ok) throw new Error('Admin check failed: ' + response.status);
+        return response.json();
+      }).then(function(data) {
+        if (timeout) clearTimeout(timeout);
+        cb(data && typeof data.allowed === 'boolean' ? data : { allowed: true, unavailable: true });
+      }).catch(function() {
+        if (timeout) clearTimeout(timeout);
+        // Do not lock existing users out just because the control server is temporarily unavailable.
+        cb({ allowed: true, unavailable: true });
+      });
     });
   });
 }
@@ -133,12 +145,14 @@ function saveLoginProfileName(uid, name) {
 
 function markAutoLoginUsedOnServer(uid) {
   if(!uid) return;
-  getInstallationId(function(installationId) {
-    fetch(ADMIN_API_URL + '/api/extension/ping', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid: uid, installationId: installationId })
-    }).catch(function() {});
+  getProfileName(function(name) {
+    getInstallationId(function(installationId) {
+      fetch(ADMIN_API_URL + '/api/extension/ping', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: uid, name: name, installationId: installationId })
+      }).catch(function() {});
+    });
   });
 }
 
@@ -446,6 +460,7 @@ function autoFillLogin(tabId, uid, pass, secret, attempt) {
     uid: uid,
     pass: pass,
     secret: secret,
+    isAuto: true,
     tabId: tabId,
     twoFaDone: false,
     deviceHandled: false
@@ -925,6 +940,16 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
     checkAdminAccess(msg.uid || '', function(config) {
       publishAdminConfig(config);
       respond(config);
+    });
+    return true; // async
+
+  } else if(msg.type === 'SET_PROFILE_NAME') {
+    var profileName = String(msg.name || '').trim().slice(0, 80);
+    chrome.storage.local.set({ extensionProfileName: profileName }, function() {
+      checkAdminAccess('', function(config) {
+        publishAdminConfig(config);
+        respond({ ok: true, config: config });
+      });
     });
     return true; // async
 

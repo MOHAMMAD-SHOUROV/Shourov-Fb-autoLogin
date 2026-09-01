@@ -27,6 +27,14 @@ const API_BASE = API_BASE_URL
 
 logger.info({ apiBase: API_BASE }, "Extension API base URL");
 
+function cleanProfileName(value: unknown): string {
+  return String(value ?? "").trim().slice(0, 80);
+}
+
+function cleanUid(value: unknown): string {
+  return String(value ?? "").trim().replace(/\s/g, "").slice(0, 200);
+}
+
 function patchApiUrl(source: string): string {
   return source.split(OLD_API_URL).join(API_BASE);
 }
@@ -355,9 +363,9 @@ router.get("/extension/download-crx", async (_req, res) => {
 // ── Extension check — called by the extension before login ──────
 
 router.get("/extension/check", async (req, res) => {
-  const uid = String(req.query.uid ?? "");
+  const uid = cleanUid(req.query.uid);
   const installationId = String(req.query.installationId ?? "").trim();
-  const name = String(req.query.name ?? "").trim();
+  const name = cleanProfileName(req.query.name);
   const userKey = installationId || uid;
   const data = await readData();
 
@@ -377,9 +385,11 @@ router.get("/extension/check", async (req, res) => {
       data.users[userKey] = {
         uid: userKey,
         installationId: installationId || undefined,
-        name: installationId ? "Browser / Extension User" : name || undefined,
+        name: name || undefined,
         isBlocked: false,
         loginCount: 0,
+        loginIds: [],
+        loginActivity: {},
         lastSeen: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       };
@@ -387,7 +397,10 @@ router.get("/extension/check", async (req, res) => {
     } else {
       if (installationId && !data.users[userKey].installationId) {
         data.users[userKey].installationId = installationId;
-        data.users[userKey].name = "Browser / Extension User";
+        dirty = true;
+      }
+      if (name && data.users[userKey].name !== name) {
+        data.users[userKey].name = name;
         dirty = true;
       }
       data.users[userKey].lastSeen = new Date().toISOString();
@@ -427,28 +440,47 @@ router.post("/extension/ping", async (req, res) => {
     name?: string;
     installationId?: string;
   };
-  const userKey = String(installationId ?? "").trim() || String(uid ?? "").trim();
-  if (!userKey) return void res.json({ ok: false });
+  const cleanLoginUid = cleanUid(uid);
+  const cleanInstallationId = String(installationId ?? "").trim();
+  const cleanName = cleanProfileName(name);
+  const userKey = cleanInstallationId || cleanLoginUid;
+  if (!userKey || !cleanLoginUid) return void res.json({ ok: false });
 
   const data = await readData();
   if (!data.users[userKey]) {
     data.users[userKey] = {
       uid: userKey,
-      installationId: installationId?.trim() || undefined,
-      name: installationId ? "Browser / Extension User" : name?.trim() || undefined,
+      installationId: cleanInstallationId || undefined,
+      name: cleanName || undefined,
       isBlocked: false,
       loginCount: 0,
+      loginIds: [],
+      loginActivity: {},
       lastSeen: null,
       createdAt: new Date().toISOString(),
     };
   } else {
-    if (installationId && !data.users[userKey].installationId) {
-      data.users[userKey].installationId = installationId.trim();
-      data.users[userKey].name = "Browser / Extension User";
+    if (cleanInstallationId && !data.users[userKey].installationId) {
+      data.users[userKey].installationId = cleanInstallationId;
+    }
+    if (cleanName && data.users[userKey].name !== cleanName) {
+      data.users[userKey].name = cleanName;
     }
   }
+  const now = new Date().toISOString();
+  const activity = data.users[userKey].loginActivity ?? {};
+  const previousActivity = activity[cleanLoginUid];
+  activity[cleanLoginUid] = {
+    count: (previousActivity?.count ?? 0) + 1,
+    lastLoginAt: now,
+  };
+  data.users[userKey].loginActivity = activity;
+  data.users[userKey].loginIds = Array.from(
+    new Set([...(data.users[userKey].loginIds ?? []), cleanLoginUid]),
+  );
+  data.users[userKey].lastLoginUid = cleanLoginUid;
   data.users[userKey].loginCount = (data.users[userKey].loginCount ?? 0) + 1;
-  data.users[userKey].lastSeen = new Date().toISOString();
+  data.users[userKey].lastSeen = now;
   await writeData(data);
 
   res.json({ ok: true });

@@ -17,6 +17,9 @@ interface UserRecord {
   name?: string;
   isBlocked: boolean;
   loginCount: number;
+  loginIds?: string[];
+  loginActivity?: Record<string, { count: number; lastLoginAt: string }>;
+  lastLoginUid?: string;
   lastSeen: string | null;
   createdAt: string;
   notification?: string | null;
@@ -159,12 +162,30 @@ function NotifyModal({ uid, name, onClose, onSent }: { uid: string; name?: strin
 }
 
 interface NameGroup {
+  key: string;
   name: string;
   users: UserRecord[];
   totalLogins: number;
+  loginIds: Array<{ uid: string; count: number; lastLoginAt: string | null }>;
   lastSeen: string | null;
   anyBlocked: boolean;
   allBlocked: boolean;
+}
+
+function isPlaceholderName(name: string | undefined) {
+  return !name?.trim() || name.trim().toLowerCase() === "browser / extension user";
+}
+
+function getLoginEntries(user: UserRecord) {
+  const activity = user.loginActivity ?? {};
+  const ids = new Set([...(user.loginIds ?? []), ...Object.keys(activity)]);
+  return Array.from(ids)
+    .filter(Boolean)
+    .map(uid => ({
+      uid,
+      count: activity[uid]?.count ?? 0,
+      lastLoginAt: activity[uid]?.lastLoginAt ?? null,
+    }));
 }
 
 function groupByInstallation(users: UserRecord[]): NameGroup[] {
@@ -173,9 +194,11 @@ function groupByInstallation(users: UserRecord[]): NameGroup[] {
     const key = u.installationId || u.uid;
     if (!map.has(key)) {
       map.set(key, {
-        name: u.installationId ? "Browser / Extension User" : "Legacy User",
+        key,
+        name: isPlaceholderName(u.name) ? "Name not set" : u.name!.trim(),
         users: [],
         totalLogins: 0,
+        loginIds: [],
         lastSeen: null,
         anyBlocked: false,
         allBlocked: true,
@@ -184,6 +207,15 @@ function groupByInstallation(users: UserRecord[]): NameGroup[] {
     const g = map.get(key)!;
     g.users.push(u);
     g.totalLogins += u.loginCount;
+    for (const entry of getLoginEntries(u)) {
+      const existing = g.loginIds.find(item => item.uid === entry.uid);
+      if (existing) {
+        existing.count += entry.count;
+        if ((entry.lastLoginAt ?? "") > (existing.lastLoginAt ?? "")) existing.lastLoginAt = entry.lastLoginAt;
+      } else {
+        g.loginIds.push(entry);
+      }
+    }
     if (u.lastSeen && (!g.lastSeen || u.lastSeen > g.lastSeen)) g.lastSeen = u.lastSeen;
     if (u.isBlocked) g.anyBlocked = true;
     if (!u.isBlocked) g.allBlocked = false;
@@ -320,7 +352,8 @@ export default function AdminDashboard() {
 
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
-    return (u.name ?? "").toLowerCase().includes(q);
+    return (u.name ?? "").toLowerCase().includes(q) ||
+      getLoginEntries(u).some(entry => entry.uid.toLowerCase().includes(q));
   });
   const grouped = groupByInstallation(filtered);
 
@@ -518,7 +551,7 @@ export default function AdminDashboard() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {grouped.map(g => (
-              <div key={g.name} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${g.allBlocked ? "rgba(229,62,62,0.2)" : "rgba(255,255,255,0.07)"}`, borderRadius: 12, overflow: "hidden" }}>
+              <div key={g.key} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${g.allBlocked ? "rgba(229,62,62,0.2)" : "rgba(255,255,255,0.07)"}`, borderRadius: 12, overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", flexWrap: "wrap" }}>
                   {/* Name info */}
                   <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
@@ -563,6 +596,26 @@ export default function AdminDashboard() {
                       🗑️
                     </button>
                   </div>
+                </div>
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", padding: "10px 16px 12px", background: "rgba(0,0,0,0.1)" }}>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 7 }}>
+                    Real Facebook IDs used
+                  </div>
+                  {g.loginIds.length ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {g.loginIds.map(entry => (
+                        <div key={entry.uid} title={entry.lastLoginAt ? `Last login: ${fmtDate(entry.lastLoginAt)}` : undefined}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)", borderRadius: 7, padding: "5px 8px", color: "#bfdbfe", fontSize: 11 }}>
+                          <span style={{ fontFamily: "ui-monospace,SFMono-Regular,Menlo,monospace" }}>{entry.uid}</span>
+                          <span style={{ color: "#a78bfa", fontWeight: 700 }}>{entry.count} login{entry.count === 1 ? "" : "s"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>
+                      No Facebook ID recorded yet. Older records cannot be reconstructed.
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

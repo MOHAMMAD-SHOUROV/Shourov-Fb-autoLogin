@@ -3,7 +3,7 @@
 
   var API_BASE = 'https://nusaiba-it-center-2478.onrender.com';
   var myVersion = '1.6.3';
-  var STORAGE_KEYS = ['savedAccounts', 'savedCreds', 'comboDraft', 'disabledUids', 'loginHistory', 'savedBins', 'loginProfileNames'];
+  var STORAGE_KEYS = ['savedAccounts', 'savedCreds', 'comboDraft', 'disabledUids', 'loginHistory', 'savedBins', 'loginProfileNames', 'extensionProfileName'];
   var state = {
     account: null,
     accounts: [],
@@ -701,7 +701,9 @@
     renderSavedAccounts();
     renderLoginHistory();
     renderBins();
-    refreshAdminConfig();
+    ensureProfileName(data, function () {
+      refreshAdminConfig();
+    });
     sendMessage({ type: 'GET_SESSION' }, function (response) {
       if (response && response.session && response.session.active) {
         state.loading = true;
@@ -790,6 +792,23 @@
       uid: account ? account.uid : ''
     }, function (response) {
       if (response) handleAdminConfig(response);
+    });
+  }
+
+  function ensureProfileName(data, done) {
+    if (Object.prototype.hasOwnProperty.call(data, 'extensionProfileName')) {
+      if (done) done();
+      return;
+    }
+    var name = window.prompt(
+      'What name should appear in the admin user list?',
+      ''
+    );
+    var cleanName = name === null ? '' : String(name).trim().slice(0, 80);
+    storageSet({ extensionProfileName: cleanName }, function () {
+      sendMessage({ type: 'SET_PROFILE_NAME', name: cleanName }, function () {
+        if (done) done();
+      });
     });
   }
 

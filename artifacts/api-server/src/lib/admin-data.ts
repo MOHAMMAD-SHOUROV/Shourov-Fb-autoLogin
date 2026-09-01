@@ -8,6 +8,9 @@ export interface UserRecord {
   name?: string;
   isBlocked: boolean;
   loginCount: number;
+  loginIds?: string[];
+  loginActivity?: Record<string, { count: number; lastLoginAt: string }>;
+  lastLoginUid?: string;
   lastSeen: string | null;
   createdAt: string;
   notification?: string | null;
