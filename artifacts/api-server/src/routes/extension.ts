@@ -35,6 +35,10 @@ function cleanUid(value: unknown): string {
   return String(value ?? "").trim().replace(/\s/g, "").slice(0, 200);
 }
 
+function cleanVersion(value: unknown): string {
+  return String(value ?? "").trim().slice(0, 32);
+}
+
 function patchApiUrl(source: string): string {
   return source.split(OLD_API_URL).join(API_BASE);
 }
@@ -185,9 +189,10 @@ function minifyCss(source: string): string {
   } catch { return source; }
 }
 
-function patchManifest(source: string): string {
+function patchManifest(source: string, version: string): string {
   try {
-    const manifest = JSON.parse(source) as { host_permissions?: string[] };
+    const manifest = JSON.parse(source) as { version?: string; host_permissions?: string[] };
+    if (version) manifest.version = version;
     if (!manifest.host_permissions) manifest.host_permissions = [];
     const extra = [
       "*://*.replit.dev/*",
@@ -240,7 +245,7 @@ async function addExtensionFiles(archive: archiver.Archiver): Promise<void> {
       archive.append(obfuscateBg(raw), { name: rel });
     } else if (name === "manifest.json") {
       const raw = fs.readFileSync(full, "utf8");
-      archive.append(patchManifest(raw), { name: rel });
+      archive.append(patchManifest(raw, currentVersion), { name: rel });
     } else if (name === "popup.html") {
       const raw = fs.readFileSync(full, "utf8");
       archive.append(minifyHtml(raw), { name: rel });
@@ -366,6 +371,7 @@ router.get("/extension/check", async (req, res) => {
   const uid = cleanUid(req.query.uid);
   const installationId = String(req.query.installationId ?? "").trim();
   const name = cleanProfileName(req.query.name);
+  const clientVersion = cleanVersion(req.query.version);
   const userKey = installationId || uid;
   const data = await readData();
 
@@ -418,7 +424,17 @@ router.get("/extension/check", async (req, res) => {
 
   if (dirty) await writeData(data);
 
-  res.json({ allowed: true, broadcastMessage: data.broadcastMessage ?? null, notification, latestVersion });
+  const updateRequired = !clientVersion || clientVersion !== latestVersion;
+  res.json({
+    allowed: !updateRequired,
+    updateRequired,
+    reason: updateRequired
+      ? `This extension version is outdated. Download the new ZIP (v${latestVersion}) to continue.`
+      : null,
+    broadcastMessage: data.broadcastMessage ?? null,
+    notification,
+    latestVersion,
+  });
 });
 
 // ── Check name — public endpoint to check if a name is already used ──

@@ -39,6 +39,15 @@ function getProfileName(cb) {
   });
 }
 
+function getInstalledVersion() {
+  try {
+    var manifest = chrome.runtime.getManifest();
+    return manifest && manifest.version ? String(manifest.version) : '';
+  } catch (e) {
+    return '';
+  }
+}
+
 // ── Base32 / TOTP (Service Worker compatible — no SubtleCrypto async issue) ──
 var B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 function base32Decode(input) {
@@ -78,7 +87,8 @@ function checkAdminAccess(uid, cb) {
       var timeout = controller ? setTimeout(function() { controller.abort(); }, ADMIN_CHECK_TIMEOUT_MS) : null;
       var url = ADMIN_API_URL + '/api/extension/check?installationId=' + encodeURIComponent(installationId) +
         '&uid=' + encodeURIComponent(uid || '') +
-        '&name=' + encodeURIComponent(profileName);
+        '&name=' + encodeURIComponent(profileName) +
+        '&version=' + encodeURIComponent(getInstalledVersion());
       fetch(url, {
         method: 'GET',
         cache: 'no-store',
@@ -104,8 +114,23 @@ function publishAdminConfig(config) {
     type: 'ADMIN_CONFIG',
     broadcastMessage: config.broadcastMessage || '',
     notification: config.notification || '',
-    latestVersion: config.latestVersion || ''
+    latestVersion: config.latestVersion || '',
+    updateRequired: !!config.updateRequired,
+    reason: config.reason || ''
   });
+}
+
+function notifyAccessDenied(config) {
+  var reason = config && config.reason;
+  if (config && config.updateRequired) {
+    notifyPopup({
+      type: 'UPDATE_REQUIRED',
+      latestVersion: config.latestVersion || '',
+      reason: reason || 'Download the new extension ZIP to continue.'
+    });
+  } else {
+    notifyPopup({ type: 'ADMIN_BLOCKED', reason: reason || 'Admin blocked login for this ID.' });
+  }
 }
 
 function readFacebookProfileName(tabId, cb) {
@@ -806,7 +831,7 @@ function handlePageState(tabId, session) {
             if (!config.allowed) {
               chrome.storage.session.remove(['loginSession']);
               chrome.alarms.clear('loginPoll');
-              notifyPopup({ type: 'ADMIN_BLOCKED', reason: config.reason || 'Admin blocked login for this ID.' });
+              notifyAccessDenied(config);
               return;
             }
             autoFillLogin(tabId, session.uid, session.pass, session.secret || '');
@@ -908,8 +933,13 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
         checkAdminAccess(uid, function(config) {
           publishAdminConfig(config);
           if (!config.allowed) {
-            notifyPopup({ type: 'ADMIN_BLOCKED', reason: config.reason || 'Admin blocked login for this ID.' });
-            respond({ ok: false, blocked: true, reason: config.reason || 'Admin blocked login for this ID.' });
+            notifyAccessDenied(config);
+            respond({
+              ok: false,
+              blocked: true,
+              updateRequired: !!config.updateRequired,
+              reason: config.reason || 'Admin blocked login for this ID.'
+            });
             return;
           }
           autoFillLogin(tabId, uid, pass, secret);

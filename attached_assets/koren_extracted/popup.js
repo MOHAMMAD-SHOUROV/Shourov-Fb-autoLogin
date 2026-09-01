@@ -80,10 +80,10 @@
     var notices = [];
     if (message.broadcastMessage) notices.push('📢 ' + message.broadcastMessage);
     if (message.notification) notices.push('🔔 ' + message.notification);
-    if (message.latestVersion && message.latestVersion !== myVersion) {
-      notices.push('🆕 New version v' + message.latestVersion + ' available — download the new ZIP.');
+    if (message.updateRequired || (message.latestVersion && message.latestVersion !== myVersion)) {
+      notices.push('🆕 New version v' + (message.latestVersion || 'available') + ' required — download the new ZIP.');
     }
-    if (notices.length) showAdminBanner(notices.join('  •  '), '#60a5fa');
+    if (notices.length) showAdminBanner(notices.join('  •  '), message.updateRequired ? '#fbbf24' : '#60a5fa');
   }
 
   function setProgress(label, percent) {
@@ -419,9 +419,16 @@
           if (response && response.ok) setProgress('Entering UID and Password...', 35);
           if (response && response.blocked) {
             state.loading = false;
-            updateLoginButton('Blocked by admin', false);
-            setProgress('Admin blocked login for this ID', 0);
-            showToast(response.reason || 'This ID cannot log in now.', '#e53e3e');
+        if (response.updateRequired) {
+          updateLoginButton('Update required', false);
+          setProgress('Download the new extension ZIP', 0);
+          showAdminBanner('🆕 ' + (response.reason || 'Download the new extension ZIP to continue.'), '#fbbf24');
+          showToast('Download the new extension ZIP to continue.', '#f59e0b');
+        } else {
+          updateLoginButton('Blocked by admin', false);
+          setProgress('Admin blocked login for this ID', 0);
+          showToast(response.reason || 'This ID cannot log in now.', '#e53e3e');
+        }
           }
         });
         return;
@@ -444,9 +451,16 @@
         }, function (response) {
           if (response && response.blocked) {
             state.loading = false;
-            updateLoginButton('Blocked by admin', false);
-            setProgress('Admin blocked login for this ID', 0);
-            showToast(response.reason || 'This ID cannot log in now.', '#e53e3e');
+            if (response.updateRequired) {
+              updateLoginButton('Update required', false);
+              setProgress('Download the new extension ZIP', 0);
+              showAdminBanner('🆕 ' + (response.reason || 'Download the new extension ZIP to continue.'), '#fbbf24');
+              showToast('Download the new extension ZIP to continue.', '#f59e0b');
+            } else {
+              updateLoginButton('Blocked by admin', false);
+              setProgress('Admin blocked login for this ID', 0);
+              showToast(response.reason || 'This ID cannot log in now.', '#e53e3e');
+            }
           }
         });
       });
@@ -738,6 +752,15 @@
       setProgress('Admin blocked login for this ID', 0);
       showAdminBanner('🚫 ' + (message.reason || 'Admin blocked login for this ID.'), '#fca5a5');
       showToast(message.reason || 'This ID cannot log in now.', '#e53e3e');
+      return;
+    }
+    if (message.type === 'UPDATE_REQUIRED') {
+      state.loading = false;
+      state.lastAutoSignature = '';
+      updateLoginButton('Update required', false);
+      setProgress('Download the new extension ZIP', 0);
+      showAdminBanner('🆕 ' + (message.reason || 'Download the new extension ZIP to continue.'), '#fbbf24');
+      showToast('Download the new extension ZIP to continue.', '#f59e0b');
       return;
     }
     if (message.type === 'AUTO_LOGIN_STARTED') {
