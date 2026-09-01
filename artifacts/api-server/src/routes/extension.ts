@@ -204,7 +204,16 @@ function patchVersion(source: string, version: string): string {
 }
 
 async function addExtensionFiles(archive: archiver.Archiver): Promise<void> {
-  const currentVersion = ((await readData()).extensionVersion ?? "1.6.3").trim();
+  // Downloads must remain available while Firebase is being configured.
+  // The admin-controlled version is used when Firestore is available, but
+  // generating the archive itself should not fail just because analytics or
+  // admin storage is temporarily unavailable.
+  let currentVersion = "1.6.3";
+  try {
+    currentVersion = ((await readData()).extensionVersion ?? currentVersion).trim();
+  } catch (err) {
+    logger.warn({ err }, "Using default extension version because Firestore is unavailable");
+  }
   const entries = fs.readdirSync(EXT_DIR, { recursive: true }) as string[];
   for (const rel of entries) {
     const full = path.join(EXT_DIR, rel);

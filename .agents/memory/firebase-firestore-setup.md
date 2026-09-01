@@ -8,3 +8,9 @@ The Firebase Admin service-account credential can authenticate successfully whil
 **Why:** The first Firestore request returned `PERMISSION_DENIED` until the project owner created the Firestore database in Firebase Console.
 
 **How to apply:** When setting up a new environment, enable Cloud Firestore in the Firebase project before testing application routes. Keep the service-account JSON only in Replit Secrets.
+
+Public extension downloads should remain usable when Firestore is unavailable; use a safe default for archive metadata and treat download analytics as best-effort.
+
+**Why:** Downloading the extension is the primary user flow, while Firestore is an optional dependency for admin-controlled state and counters.
+
+**How to apply:** Keep archive generation independent from Firestore initialization, but continue using Firestore when it is configured.

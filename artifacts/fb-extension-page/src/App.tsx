@@ -77,23 +77,51 @@ function HomePage() {
   const [particles, setParticles] = useState<{x:number;y:number;s:number;d:number}[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+
+  async function downloadFile(endpoint: string, filename: string) {
+    if (downloading) return;
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      const response = await fetch(`${BASE}${endpoint}`, {
+        method: "GET",
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        throw new Error(`Download failed with status ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      if (blob.size === 0) {
+        throw new Error("The downloaded file was empty");
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setDownloaded(true);
+      setShowModal(true);
+    } catch (error) {
+      console.error("Extension download failed", error);
+      setDownloadError("ডাউনলোড হয়নি। আবার চেষ্টা করুন / Download failed. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   function handleDownload() {
-    const a = document.createElement("a");
-    a.href = `${BASE}/api/extension/download`;
-    a.download = "FB-AutoLogin.zip";
-    a.click();
-    setDownloaded(true);
-    setShowModal(true);
+    void downloadFile("/api/extension/download", "FB-AutoLogin.zip");
   }
 
   function handleDownloadCrx() {
-    const a = document.createElement("a");
-    a.href = `${BASE}/api/extension/download-crx`;
-    a.download = "FB-AutoLogin.crx";
-    a.click();
-    setDownloaded(true);
-    setShowModal(true);
+    void downloadFile("/api/extension/download-crx", "FB-AutoLogin.crx");
   }
 
   useEffect(() => {
@@ -187,7 +215,7 @@ function HomePage() {
                 <polyline points="7 10 12 15 17 10"/>
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-              💻 Laptop / PC
+              {downloading ? "ডাউনলোড হচ্ছে… / Downloading…" : "💻 Laptop / PC"}
               <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent)",animation:"shine 2.5s infinite"}}/>
             </button>
             <div style={{marginTop:5,fontSize:11,color:"rgba(255,255,255,.3)"}}>ZIP file · Load Unpacked</div>
@@ -211,12 +239,17 @@ function HomePage() {
                 <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
                 <line x1="12" y1="18" x2="12.01" y2="18"/>
               </svg>
-              📱 Mobile / Phone
+              {downloading ? "ডাউনলোড হচ্ছে… / Downloading…" : "📱 Mobile / Phone"}
               <span style={{position:"absolute",top:0,left:"-100%",width:"55%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent)",animation:"shine 2.5s infinite"}}/>
             </button>
             <div style={{marginTop:5,fontSize:11,color:"rgba(255,255,255,.3)"}}>CRX file · Kiwi Browser</div>
           </div>
         </div>
+        {downloadError && (
+          <div role="alert" style={{margin:"14px auto 0",maxWidth:520,color:"#ffb4b4",fontSize:13,textAlign:"center"}}>
+            {downloadError}
+          </div>
+        )}
       </section>
 
       {/* ─── DEVELOPER CARD ─── */}
