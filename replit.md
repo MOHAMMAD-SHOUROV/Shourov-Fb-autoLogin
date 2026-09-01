@@ -39,7 +39,7 @@ The root `render.yaml` configures one Node web service that builds the Vite webs
 
 - Build: `pnpm install --frozen-lockfile && pnpm --filter @workspace/fb-extension-page run build && pnpm --filter @workspace/api-server run build`
 - Start: `node --max-old-space-size=512 artifacts/api-server/dist/index.mjs`
-- Required Render variables: `ADMIN_PASSWORD`, `API_BASE_URL` (the new Render service URL), and generated `SESSION_SECRET`
+- Required Render variables: `ADMIN_PASSWORD`, `API_BASE_URL` (the new Render service URL), generated `SESSION_SECRET`, and `FIREBASE_SERVICE_ACCOUNT_JSON`
 - Admin panel: `/admin`
 - After creating the Render web service from this repository, set `ADMIN_PASSWORD` to the password you want to use and set `API_BASE_URL` to the service's public URL, for example `https://your-service.onrender.com`. Keep the generated `SESSION_SECRET` unchanged.
 - After the first successful deploy, open `https://your-service.onrender.com/` for the website and `https://your-service.onrender.com/admin` for the admin panel. Render's health check is `https://your-service.onrender.com/api/healthz`.
