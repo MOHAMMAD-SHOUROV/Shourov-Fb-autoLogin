@@ -22,7 +22,7 @@ router.post("/admin/auth", (req: Request, res: Response) => {
 
 router.get("/admin/stats", auth, async (_req: Request, res: Response) => {
   const data = await readData();
-  const users = Object.values(data.users);
+  const users = Object.values(data.users).filter((user) => user.installationId);
   res.json({
     totalUsers: users.length,
     blockedUsers: users.filter((u) => u.isBlocked).length,
@@ -53,10 +53,12 @@ router.put("/admin/version", auth, async (req: Request, res: Response) => {
 
 router.get("/admin/users", auth, async (_req: Request, res: Response) => {
   const data = await readData();
-  const users = Object.values(data.users).sort(
+  const users = Object.values(data.users)
+    .filter((user) => user.installationId)
+    .sort(
     (a, b) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
+    );
   res.json({ users });
 });
 

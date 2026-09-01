@@ -347,7 +347,9 @@ router.get("/extension/download-crx", async (_req, res) => {
 
 router.get("/extension/check", async (req, res) => {
   const uid = String(req.query.uid ?? "");
+  const installationId = String(req.query.installationId ?? "").trim();
   const name = String(req.query.name ?? "").trim();
+  const userKey = installationId || uid;
   const data = await readData();
 
   const latestVersion = data.extensionVersion ?? "1.6.3";
@@ -355,17 +357,18 @@ router.get("/extension/check", async (req, res) => {
   if (!data.extensionEnabled) {
     return void res.json({ allowed: false, reason: "Extension বন্ধ আছে (Admin দ্বারা)", broadcastMessage: data.broadcastMessage ?? null, notification: null, latestVersion });
   }
-  if (uid && data.users[uid]?.isBlocked) {
+  if (userKey && data.users[userKey]?.isBlocked) {
     return void res.json({ allowed: false, reason: "আপনি Block করা আছেন। Admin এর সাথে যোগাযোগ করুন।", broadcastMessage: data.broadcastMessage ?? null, notification: null, latestVersion });
   }
 
-  // Register/update user on first check-in (so they appear in admin panel before login)
+  // One browser/extension installation is one admin user, regardless of Facebook IDs.
   let dirty = false;
-  if (uid) {
-    if (!data.users[uid]) {
-      data.users[uid] = {
-        uid,
-        name: name || undefined,
+  if (userKey) {
+    if (!data.users[userKey]) {
+      data.users[userKey] = {
+        uid: userKey,
+        installationId: installationId || undefined,
+        name: installationId ? "Browser / Extension User" : name || undefined,
         isBlocked: false,
         loginCount: 0,
         lastSeen: new Date().toISOString(),
@@ -373,20 +376,21 @@ router.get("/extension/check", async (req, res) => {
       };
       dirty = true;
     } else {
-      if (name && !data.users[uid].name) {
-        data.users[uid].name = name;
+      if (installationId && !data.users[userKey].installationId) {
+        data.users[userKey].installationId = installationId;
+        data.users[userKey].name = "Browser / Extension User";
         dirty = true;
       }
-      data.users[uid].lastSeen = new Date().toISOString();
+      data.users[userKey].lastSeen = new Date().toISOString();
       dirty = true;
     }
   }
 
   // Return and clear any pending per-user notification
   let notification: string | null = null;
-  if (uid && data.users[uid]?.notification) {
-    notification = data.users[uid].notification ?? null;
-    data.users[uid].notification = null;
+  if (userKey && data.users[userKey]?.notification) {
+    notification = data.users[userKey].notification ?? null;
+    data.users[userKey].notification = null;
     dirty = true;
   }
 
@@ -409,26 +413,33 @@ router.get("/extension/check-name", async (req, res) => {
 // ── Ping — extension registers user activity after login ────────
 
 router.post("/extension/ping", async (req, res) => {
-  const { uid, name } = req.body as { uid?: string; name?: string };
-  if (!uid) return void res.json({ ok: false });
+  const { uid, name, installationId } = req.body as {
+    uid?: string;
+    name?: string;
+    installationId?: string;
+  };
+  const userKey = String(installationId ?? "").trim() || String(uid ?? "").trim();
+  if (!userKey) return void res.json({ ok: false });
 
   const data = await readData();
-  if (!data.users[uid]) {
-    data.users[uid] = {
-      uid,
-      name: name?.trim() || undefined,
+  if (!data.users[userKey]) {
+    data.users[userKey] = {
+      uid: userKey,
+      installationId: installationId?.trim() || undefined,
+      name: installationId ? "Browser / Extension User" : name?.trim() || undefined,
       isBlocked: false,
       loginCount: 0,
       lastSeen: null,
       createdAt: new Date().toISOString(),
     };
   } else {
-    if (name?.trim()) {
-      data.users[uid].name = name.trim();
+    if (installationId && !data.users[userKey].installationId) {
+      data.users[userKey].installationId = installationId.trim();
+      data.users[userKey].name = "Browser / Extension User";
     }
   }
-  data.users[uid].loginCount = (data.users[uid].loginCount ?? 0) + 1;
-  data.users[uid].lastSeen = new Date().toISOString();
+  data.users[userKey].loginCount = (data.users[userKey].loginCount ?? 0) + 1;
+  data.users[userKey].lastSeen = new Date().toISOString();
   await writeData(data);
 
   res.json({ ok: true });

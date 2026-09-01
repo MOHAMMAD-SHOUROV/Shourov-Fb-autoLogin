@@ -13,6 +13,7 @@ function api(path: string, opts: RequestInit = {}) {
 
 interface UserRecord {
   uid: string;
+  installationId?: string;
   name?: string;
   isBlocked: boolean;
   loginCount: number;
@@ -159,22 +160,29 @@ function NotifyModal({ uid, name, onClose, onSent }: { uid: string; name?: strin
 
 interface NameGroup {
   name: string;
-  uids: UserRecord[];
+  users: UserRecord[];
   totalLogins: number;
   lastSeen: string | null;
   anyBlocked: boolean;
   allBlocked: boolean;
 }
 
-function groupByName(users: UserRecord[]): NameGroup[] {
+function groupByInstallation(users: UserRecord[]): NameGroup[] {
   const map = new Map<string, NameGroup>();
   for (const u of users) {
-    const key = (u.name || "").trim() || u.uid;
+    const key = u.installationId || u.uid;
     if (!map.has(key)) {
-      map.set(key, { name: key, uids: [], totalLogins: 0, lastSeen: null, anyBlocked: false, allBlocked: true });
+      map.set(key, {
+        name: u.installationId ? "Browser / Extension User" : "Legacy User",
+        users: [],
+        totalLogins: 0,
+        lastSeen: null,
+        anyBlocked: false,
+        allBlocked: true,
+      });
     }
     const g = map.get(key)!;
-    g.uids.push(u);
+    g.users.push(u);
     g.totalLogins += u.loginCount;
     if (u.lastSeen && (!g.lastSeen || u.lastSeen > g.lastSeen)) g.lastSeen = u.lastSeen;
     if (u.isBlocked) g.anyBlocked = true;
@@ -312,25 +320,25 @@ export default function AdminDashboard() {
 
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
-    return u.uid.toLowerCase().includes(q) || (u.name ?? "").toLowerCase().includes(q);
+    return (u.name ?? "").toLowerCase().includes(q);
   });
-  const grouped = groupByName(filtered);
+  const grouped = groupByInstallation(filtered);
 
   async function blockGroup(g: NameGroup) {
-    for (const u of g.uids) if (!u.isBlocked) await blockUser(u.uid);
+    for (const u of g.users) if (!u.isBlocked) await blockUser(u.uid);
   }
   async function unblockGroup(g: NameGroup) {
-    for (const u of g.uids) if (u.isBlocked) await unblockUser(u.uid);
+    for (const u of g.users) if (u.isBlocked) await unblockUser(u.uid);
   }
   async function deleteGroup(g: NameGroup) {
-    if (!window.confirm(`"${g.name}" এর সব ${g.uids.length}টি ID মুছে ফেলবেন?`)) return;
-    for (const u of g.uids) {
+    if (!window.confirm(`"${g.name}" মুছে ফেলবেন?`)) return;
+    for (const u of g.users) {
       try {
         await api(`/admin/users/${encodeURIComponent(u.uid)}`, { method: "DELETE" });
       } catch {}
     }
-    setUsers(prev => prev.filter(u => !g.uids.find(x => x.uid === u.uid)));
-    setStats(prev => prev ? { ...prev, totalUsers: prev.totalUsers - g.uids.length } : prev);
+    setUsers(prev => prev.filter(u => !g.users.find(x => x.uid === u.uid)));
+    setStats(prev => prev ? { ...prev, totalUsers: prev.totalUsers - g.users.length } : prev);
     showToast(`🗑️ "${g.name}" মুছে ফেলা হয়েছে`);
   }
   const extOn = stats?.extensionEnabled ?? true;
@@ -495,8 +503,8 @@ export default function AdminDashboard() {
       <div style={s.tableWrap}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>📋 User তালিকা <span style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.4)" }}>({grouped.length} জন)</span></div>
-          <input
-            placeholder="নাম বা UID দিয়ে খুঁজুন..."
+           <input
+             placeholder="Browser user খুঁজুন..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 9, padding: "8px 14px", color: "#fff", fontSize: 13, outline: "none", width: 240, fontFamily: "inherit" }}
@@ -523,7 +531,7 @@ export default function AdminDashboard() {
                         {g.allBlocked && <span style={{ background: "rgba(229,62,62,0.15)", color: "#fca5a5", borderRadius: 50, padding: "1px 8px", fontSize: 10, fontWeight: 700 }}>🚫 Blocked</span>}
                       </div>
                       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 3, display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        <span>🪪 <b style={{ color: "#60a5fa" }}>{g.uids.length}</b> টি ID</span>
+                        <span>💻 একই browser/extension-এর সব login</span>
                         <span>·</span>
                         <span>🔑 <b style={{ color: "#a78bfa" }}>{g.totalLogins}</b> বার login</span>
                         <span>·</span>
@@ -535,7 +543,7 @@ export default function AdminDashboard() {
                   </div>
                   {/* Actions */}
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                    <button onClick={() => setNotifyTarget(g.uids[0])}
+                    <button onClick={() => setNotifyTarget(g.users[0])}
                       style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.35)", borderRadius: 7, padding: "6px 10px", color: "#a78bfa", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
                       🔔
                     </button>

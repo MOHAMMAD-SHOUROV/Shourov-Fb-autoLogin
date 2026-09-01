@@ -4,6 +4,7 @@ import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
 export interface UserRecord {
   uid: string;
+  installationId?: string;
   name?: string;
   isBlocked: boolean;
   loginCount: number;

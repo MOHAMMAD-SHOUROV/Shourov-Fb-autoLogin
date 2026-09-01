@@ -2,6 +2,34 @@
 
 var ADMIN_API_URL = 'https://nusaiba-it-center-2478.onrender.com';
 var ADMIN_CHECK_TIMEOUT_MS = 5000;
+var INSTALLATION_ID_KEY = 'extensionInstallationId';
+var installationIdCache = null;
+
+function createInstallationId() {
+  try {
+    if (crypto && crypto.randomUUID) return 'inst_' + crypto.randomUUID();
+  } catch (e) {}
+  return 'inst_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 12);
+}
+
+function getInstallationId(cb) {
+  if (installationIdCache) return cb(installationIdCache);
+  chrome.storage.local.get([INSTALLATION_ID_KEY], function(data) {
+    var id = data && typeof data[INSTALLATION_ID_KEY] === 'string'
+      ? data[INSTALLATION_ID_KEY].trim()
+      : '';
+    if (!id) {
+      id = createInstallationId();
+      chrome.storage.local.set((function() {
+        var value = {};
+        value[INSTALLATION_ID_KEY] = id;
+        return value;
+      })());
+    }
+    installationIdCache = id;
+    cb(id);
+  });
+}
 
 // ── Base32 / TOTP (Service Worker compatible — no SubtleCrypto async issue) ──
 var B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
@@ -36,24 +64,25 @@ function notifyPopup(msg) {
 }
 
 function checkAdminAccess(uid, cb) {
-  if (!uid) return cb({ allowed: true });
-  var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  var timeout = controller ? setTimeout(function() { controller.abort(); }, ADMIN_CHECK_TIMEOUT_MS) : null;
-  var url = ADMIN_API_URL + '/api/extension/check?uid=' + encodeURIComponent(uid);
-  fetch(url, {
-    method: 'GET',
-    cache: 'no-store',
-    signal: controller ? controller.signal : undefined
-  }).then(function(response) {
-    if (!response.ok) throw new Error('Admin check failed: ' + response.status);
-    return response.json();
-  }).then(function(data) {
-    if (timeout) clearTimeout(timeout);
-    cb(data && typeof data.allowed === 'boolean' ? data : { allowed: true, unavailable: true });
-  }).catch(function() {
-    if (timeout) clearTimeout(timeout);
-    // Do not lock existing users out just because the control server is temporarily unavailable.
-    cb({ allowed: true, unavailable: true });
+  getInstallationId(function(installationId) {
+    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timeout = controller ? setTimeout(function() { controller.abort(); }, ADMIN_CHECK_TIMEOUT_MS) : null;
+    var url = ADMIN_API_URL + '/api/extension/check?installationId=' + encodeURIComponent(installationId);
+    fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller ? controller.signal : undefined
+    }).then(function(response) {
+      if (!response.ok) throw new Error('Admin check failed: ' + response.status);
+      return response.json();
+    }).then(function(data) {
+      if (timeout) clearTimeout(timeout);
+      cb(data && typeof data.allowed === 'boolean' ? data : { allowed: true, unavailable: true });
+    }).catch(function() {
+      if (timeout) clearTimeout(timeout);
+      // Do not lock existing users out just because the control server is temporarily unavailable.
+      cb({ allowed: true, unavailable: true });
+    });
   });
 }
 
@@ -104,11 +133,13 @@ function saveLoginProfileName(uid, name) {
 
 function markAutoLoginUsedOnServer(uid) {
   if(!uid) return;
-  fetch(ADMIN_API_URL + '/api/extension/ping', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ uid: uid })
-  }).catch(function() {});
+  getInstallationId(function(installationId) {
+    fetch(ADMIN_API_URL + '/api/extension/ping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: uid, installationId: installationId })
+    }).catch(function() {});
+  });
 }
 
 // ── Detect page type in a tab ─────────────────────────────────────
