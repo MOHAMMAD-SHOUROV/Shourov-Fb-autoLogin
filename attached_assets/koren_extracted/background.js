@@ -791,7 +791,7 @@ function handlePageState(tabId, session) {
             if (!config.allowed) {
               chrome.storage.session.remove(['loginSession']);
               chrome.alarms.clear('loginPoll');
-              notifyPopup({ type: 'ADMIN_BLOCKED', reason: config.reason || 'Admin এই ID-এর login বন্ধ করেছে।' });
+              notifyPopup({ type: 'ADMIN_BLOCKED', reason: config.reason || 'Admin blocked login for this ID.' });
               return;
             }
             autoFillLogin(tabId, session.uid, session.pass, session.secret || '');
@@ -893,8 +893,8 @@ chrome.runtime.onMessage.addListener(function(msg, sender, respond) {
         checkAdminAccess(uid, function(config) {
           publishAdminConfig(config);
           if (!config.allowed) {
-            notifyPopup({ type: 'ADMIN_BLOCKED', reason: config.reason || 'Admin এই ID-এর login বন্ধ করেছে।' });
-            respond({ ok: false, blocked: true, reason: config.reason || 'Admin এই ID-এর login বন্ধ করেছে।' });
+            notifyPopup({ type: 'ADMIN_BLOCKED', reason: config.reason || 'Admin blocked login for this ID.' });
+            respond({ ok: false, blocked: true, reason: config.reason || 'Admin blocked login for this ID.' });
             return;
           }
           autoFillLogin(tabId, uid, pass, secret);

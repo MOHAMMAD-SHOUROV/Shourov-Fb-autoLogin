@@ -81,7 +81,7 @@
     if (message.broadcastMessage) notices.push('📢 ' + message.broadcastMessage);
     if (message.notification) notices.push('🔔 ' + message.notification);
     if (message.latestVersion && message.latestVersion !== myVersion) {
-      notices.push('🆕 নতুন version v' + message.latestVersion + ' available — নতুন ZIP download করুন।');
+      notices.push('🆕 New version v' + message.latestVersion + ' available — download the new ZIP.');
     }
     if (notices.length) showAdminBanner(notices.join('  •  '), '#60a5fa');
   }
@@ -197,15 +197,15 @@
       parsedRow.style.display = 'none';
       totpBox.style.display = 'none';
       stopBtn.disabled = true;
-      if (loginStatus) loginStatus.textContent = 'UID ও Password দিলেই Auto Login শুরু হবে';
+      if (loginStatus) loginStatus.textContent = 'Enter UID and Password to start auto-login';
       return;
     }
     parsedRow.style.display = 'grid';
     pUid.textContent = account.uid || '—';
     pPass.textContent = account.pass ? '••••••' : '—';
-    pSecret.textContent = account.secret ? account.secret.slice(0, 6) + '…' : 'নেই';
+    pSecret.textContent = account.secret ? account.secret.slice(0, 6) + '…' : 'None';
     stopBtn.disabled = false;
-    stopBtn.textContent = isDisabled(account.uid) ? 'On / চালু করুন' : 'Stop / Off';
+    stopBtn.textContent = isDisabled(account.uid) ? 'On' : 'Stop / Off';
     stopBtn.classList.toggle('is-off', isDisabled(account.uid));
     if (account.secret) startTOTP();
     else {
@@ -293,7 +293,7 @@
   function copyText(value) {
     if (!value) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(value).then(function () { showToast('কপি হয়েছে ✅', '#25D366'); }).catch(function () {});
+      navigator.clipboard.writeText(value).then(function () { showToast('Copied ✅', '#25D366'); }).catch(function () {});
     }
   }
 
@@ -321,9 +321,9 @@
     persistState();
     renderSavedAccounts();
     renderParsed(state.account);
-    updateLoginButton('Off — আবার paste করলে On হবে', false);
-    setProgress('এই ID Off করা হয়েছে', 0);
-    showToast('এই ID এখন Off থাকবে। আবার paste করলে Auto On হবে।', '#f59e0b');
+    updateLoginButton('Off — paste again to turn On', false);
+    setProgress('This ID is Off', 0);
+    showToast('This ID is Off. Paste again to turn it On.', '#f59e0b');
   }
 
   function recordLoginAccount(account) {
@@ -392,15 +392,15 @@
   function runLogin() {
     if (!state.account || state.loading) return;
     if (isDisabled(state.account.uid)) {
-      showToast('এই ID Off আছে — আবার paste করলে On হবে।', '#f59e0b');
+      showToast('This ID is Off — paste again to turn it On.', '#f59e0b');
       return;
     }
     recordLoginAccount(state.account);
     state.loading = true;
     state.currentTabId = null;
     successBox.style.display = 'none';
-    setProgress('Facebook tab প্রস্তুত করছি...', 10);
-    updateLoginButton('লগইন হচ্ছে...', true);
+    setProgress('Preparing Facebook tab...', 10);
+    updateLoginButton('Logging in...', true);
     getFacebookTab(function (tab) {
       if (tab && tab.id) {
         state.currentTabId = tab.id;
@@ -416,12 +416,12 @@
           secret: state.account.secret,
           isAuto: true
         }, function (response) {
-          if (response && response.ok) setProgress('UID ও Password দেওয়া হচ্ছে...', 35);
+          if (response && response.ok) setProgress('Entering UID and Password...', 35);
           if (response && response.blocked) {
             state.loading = false;
-            updateLoginButton('Admin দ্বারা বন্ধ', false);
-            setProgress('এই ID-এর login Admin বন্ধ করেছে', 0);
-            showToast(response.reason || 'এই ID এখন login করতে পারবে না।', '#e53e3e');
+            updateLoginButton('Blocked by admin', false);
+            setProgress('Admin blocked login for this ID', 0);
+            showToast(response.reason || 'This ID cannot log in now.', '#e53e3e');
           }
         });
         return;
@@ -429,8 +429,8 @@
       chrome.tabs.create({ url: 'https://www.facebook.com/login', active: true }, function (newTab) {
         if (!newTab || !newTab.id) {
           state.loading = false;
-          updateLoginButton('আবার চেষ্টা করুন', false);
-          showToast('Facebook tab খোলা যায়নি।', '#e53e3e');
+          updateLoginButton('Try again', false);
+          showToast('Could not open Facebook tab.', '#e53e3e');
           return;
         }
         state.currentTabId = newTab.id;
@@ -444,9 +444,9 @@
         }, function (response) {
           if (response && response.blocked) {
             state.loading = false;
-            updateLoginButton('Admin দ্বারা বন্ধ', false);
-            setProgress('এই ID-এর login Admin বন্ধ করেছে', 0);
-            showToast(response.reason || 'এই ID এখন login করতে পারবে না।', '#e53e3e');
+            updateLoginButton('Blocked by admin', false);
+            setProgress('Admin blocked login for this ID', 0);
+            showToast(response.reason || 'This ID cannot log in now.', '#e53e3e');
           }
         });
       });
@@ -478,7 +478,7 @@
     var wasDisabled = isDisabled(account.uid);
     if (wasDisabled) {
       delete state.disabledUids[normalizeUid(account.uid)];
-      showToast('এই ID আবার Auto On হয়েছে ✅', '#25D366');
+      showToast('This ID is On again ✅', '#25D366');
     }
     renderParsed(account);
     persistState();
@@ -509,15 +509,15 @@
       var main = document.createElement('button');
       main.type = 'button';
       main.className = 'chip-main';
-      main.title = off ? 'On করতে আবার এই ID paste করুন' : 'এই ID ব্যবহার করুন';
+      main.title = off ? 'Paste this ID again to turn it On' : 'Use this ID';
       var uidEl = document.createElement('span');
       uidEl.className = 'chip-uid';
        uidEl.textContent = account.name || account.uid;
       var meta = document.createElement('span');
       meta.className = 'chip-meta';
        meta.textContent = account.name
-         ? account.uid + (off ? ' · OFF · আবার paste করলে ON' : ' · Saved ID')
-         : (off ? 'OFF · আবার paste করলে ON' : 'Saved ID · password saved');
+         ? account.uid + (off ? ' · OFF · paste again for ON' : ' · Saved ID')
+         : (off ? 'OFF · paste again for ON' : 'Saved ID · password saved');
       if (account.secret) {
         var badge = document.createElement('span');
         badge.className = 'chip-2fa-badge';
@@ -535,11 +535,11 @@
       toggle.type = 'button';
       toggle.className = 'chip-toggle' + (off ? ' is-off' : '');
       toggle.textContent = off ? 'ON' : 'OFF';
-      toggle.title = off ? 'এই ID চালু করুন' : 'এই ID বন্ধ করুন';
+      toggle.title = off ? 'Turn this ID on' : 'Turn this ID off';
       toggle.addEventListener('click', function () {
         if (off) {
           markEnabled(account.uid);
-          showToast('ID আবার On হয়েছে।', '#25D366');
+          showToast('ID is On again.', '#25D366');
         } else {
           state.disabledUids[normalizeUid(account.uid)] = true;
           if (state.account && sameAccount(state.account, account)) {
@@ -549,7 +549,7 @@
           }
           persistState();
           renderSavedAccounts();
-          showToast('এই ID Off করা হয়েছে।', '#f59e0b');
+          showToast('This ID is Off.', '#f59e0b');
         }
       });
 
@@ -562,7 +562,7 @@
       remove.type = 'button';
       remove.className = 'chip-del';
       remove.textContent = '×';
-      remove.title = 'এই ID মুছুন';
+      remove.title = 'Delete this ID';
       remove.addEventListener('click', function () {
         state.accounts = state.accounts.filter(function (item) { return !sameAccount(item, account); });
         delete state.disabledUids[normalizeUid(account.uid)];
@@ -592,13 +592,13 @@
       var main = document.createElement('button');
       main.type = 'button';
       main.className = 'chip-main';
-      main.title = 'এই login করা ID আবার ব্যবহার করুন';
+      main.title = 'Use this logged-in ID again';
       var uidEl = document.createElement('span');
       uidEl.className = 'chip-uid';
       uidEl.textContent = account.name || ('UID ' + account.uid);
       var meta = document.createElement('span');
       meta.className = 'chip-meta';
-      meta.textContent = account.uid + ' · click করলে login';
+      meta.textContent = account.uid + ' · click to login';
       if (account.secret) {
         var badge = document.createElement('span');
         badge.className = 'chip-2fa-badge';
@@ -616,7 +616,7 @@
       remove.type = 'button';
       remove.className = 'chip-del';
       remove.textContent = '×';
-      remove.title = 'এই login history মুছুন';
+      remove.title = 'Delete this login history';
       remove.addEventListener('click', function () {
         state.loginHistory = state.loginHistory.filter(function (item) { return !sameAccount(item, account); });
         persistState();
@@ -639,7 +639,7 @@
       remove.type = 'button';
       remove.className = 'bin-delete';
       remove.textContent = '×';
-      remove.title = 'BIN মুছুন';
+      remove.title = 'Delete BIN';
       remove.addEventListener('click', function () {
         state.bins = state.bins.filter(function (item) { return item !== bin; });
         persistState();
@@ -713,8 +713,8 @@
         };
         comboInput.value = sessionAccount.uid + '\t' + sessionAccount.pass + (sessionAccount.secret ? '\t' + sessionAccount.secret : '');
         renderParsed(sessionAccount);
-        setProgress('লগইন চলছে...', 45);
-        updateLoginButton('লগইন চলছে...', true);
+        setProgress('Login in progress...', 45);
+        updateLoginButton('Logging in...', true);
       }
     });
   }
@@ -732,53 +732,53 @@
     if (message.type === 'ADMIN_BLOCKED') {
       state.loading = false;
       state.lastAutoSignature = '';
-      updateLoginButton('Admin দ্বারা বন্ধ', false);
-      setProgress('এই ID-এর login Admin বন্ধ করেছে', 0);
-      showAdminBanner('🚫 ' + (message.reason || 'এই ID-এর login Admin বন্ধ করেছে।'), '#fca5a5');
-      showToast(message.reason || 'এই ID এখন login করতে পারবে না।', '#e53e3e');
+      updateLoginButton('Blocked by admin', false);
+      setProgress('Admin blocked login for this ID', 0);
+      showAdminBanner('🚫 ' + (message.reason || 'Admin blocked login for this ID.'), '#fca5a5');
+      showToast(message.reason || 'This ID cannot log in now.', '#e53e3e');
       return;
     }
     if (message.type === 'AUTO_LOGIN_STARTED') {
       state.loading = true;
       state.currentTabId = message.tabId || state.currentTabId;
-      setProgress('UID ও Password দেওয়া হয়েছে...', 40);
-      updateLoginButton('লগইন হচ্ছে...', true);
+      setProgress('UID and Password entered...', 40);
+      updateLoginButton('Logging in...', true);
       return;
     }
     if (message.tabId && state.currentTabId && message.tabId !== state.currentTabId) return;
     if (message.type === 'STATUS') {
       var labels = {
-        trust_device: ['Trust device সমাধান হচ্ছে...', 55],
-        trust_device_clicked: ['Trust device সম্পন্ন...', 65],
-        sign_in_as_dialog: ['Login dialog বন্ধ হচ্ছে...', 45],
-        device_approval: ['অন্য verification method বাছাই হচ্ছে...', 58],
-        choosing_auth_app: ['Authentication app বাছাই হচ্ছে...', 65],
-        twofa_filled: ['2FA code দেওয়া হয়েছে ✅', 88],
-        recaptcha: ['reCAPTCHA পাওয়া গেছে...', 68],
-        captcha_manual: ['reCAPTCHA manual ভাবে শেষ করুন', 70],
-        need_secret: ['2FA secret দরকার', 70]
+        trust_device: ['Handling trusted device...', 55],
+        trust_device_clicked: ['Trusted device handled...', 65],
+        sign_in_as_dialog: ['Closing login dialog...', 45],
+        device_approval: ['Choosing another verification method...', 58],
+        choosing_auth_app: ['Choosing authentication app...', 65],
+        twofa_filled: ['2FA code entered ✅', 88],
+        recaptcha: ['reCAPTCHA found...', 68],
+        captcha_manual: ['Complete reCAPTCHA manually', 70],
+        need_secret: ['2FA secret required', 70]
       };
       var status = labels[message.msg];
       if (status) setProgress(status[0], status[1]);
       if (message.msg === 'need_secret') {
         state.loading = false;
         state.lastAutoSignature = '';
-        updateLoginButton('2FA Secret দিন', false);
-        showToast('এই login-এর জন্য UID[Tab]Pass[Tab]2FA Secret দিন।', '#f59e0b');
+        updateLoginButton('Enter 2FA Secret', false);
+        showToast('Enter UID[Tab]Pass[Tab]2FA Secret for this login.', '#f59e0b');
       }
-      if (message.msg === 'captcha_manual') showToast('reCAPTCHA manual ভাবে শেষ করুন।', '#f59e0b');
+      if (message.msg === 'captcha_manual') showToast('Complete reCAPTCHA manually.', '#f59e0b');
       if (message.msg === 'twofa_filled' && message.code) {
         usedCodeEl.textContent = '2FA: ' + message.code;
       }
       if (message.msg === 'success') {
         state.loading = false;
         state.lastAutoSignature = '';
-        setProgress('লগইন সম্পন্ন! ✅', 100);
-        updateLoginButton('লগইন সম্পন্ন ✅', false);
+        setProgress('Login complete! ✅', 100);
+        updateLoginButton('Login complete ✅', false);
         usedCodeEl.textContent = 'Login Success ✅';
         successBox.style.display = 'block';
         if (state.account) recordLoginAccount(state.account);
-        showToast('লগইন সফল! UID/Password সেভ আছে ✅', '#25D366');
+        showToast('Login successful! UID/Password saved ✅', '#25D366');
       }
     }
   }
@@ -816,27 +816,27 @@
   stopBtn.addEventListener('click', stopCurrent);
   saveBtn.addEventListener('click', function () {
     var account = parseCredentials(comboInput.value);
-    if (!account) return showToast('UID ও Password দিন।', '#e53e3e');
+    if (!account) return showToast('Enter UID and Password.', '#e53e3e');
     var suggestedName = getKnownName(account.uid);
-    var customName = window.prompt('Save ID-এর নাম লিখুন (যেমন Nadiya):', suggestedName);
+    var customName = window.prompt('Enter a name for this ID (e.g. Nadiya):', suggestedName);
     if (customName === null) return;
     account.name = String(customName).trim() || suggestedName;
     upsertAccount(account);
-    showToast((account.name ? account.name + ' নামে ' : '') + 'ID সেভ হয়েছে ✅', '#25D366');
+    showToast((account.name ? 'Saved as ' + account.name + ': ' : '') + 'ID saved ✅', '#25D366');
   });
   $('pasteBtn').addEventListener('click', function () {
     if (!navigator.clipboard || !navigator.clipboard.readText) {
-      return showToast('Clipboard permission পাওয়া যায়নি।', '#e53e3e');
+      return showToast('Clipboard permission unavailable.', '#e53e3e');
     }
     navigator.clipboard.readText().then(function (text) {
       comboInput.value = text;
       handleParsedInput(true);
     }).catch(function () {
-      showToast('Clipboard থেকে Paste করা যায়নি।', '#e53e3e');
+      showToast('Could not paste from clipboard.', '#e53e3e');
     });
   });
   $('clearAllBtn').addEventListener('click', function () {
-    if (!window.confirm('সব সেভ করা ID মুছে ফেলবেন?')) return;
+    if (!window.confirm('Delete all saved IDs?')) return;
     state.accounts = [];
     state.loginHistory = [];
     state.bins = [];
@@ -854,7 +854,7 @@
   $('copyTotp').addEventListener('click', function () { copyText(state.totpCode); });
   saveBinBtn.addEventListener('click', function () {
     var value = String(binInput.value || '').trim().replace(/\s+/g, '');
-    if (!value) return showToast('BIN number লিখুন।', '#e53e3e');
+    if (!value) return showToast('Enter a BIN number.', '#e53e3e');
     if (state.bins.indexOf(value) === -1) {
       state.bins.unshift(value);
       state.bins = state.bins.slice(0, 100);
@@ -862,7 +862,7 @@
       renderBins();
     }
     binInput.value = '';
-    showToast('BIN save হয়েছে ✅', '#25D366');
+    showToast('BIN saved ✅', '#25D366');
   });
 
   try {

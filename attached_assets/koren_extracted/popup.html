@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -43,7 +43,7 @@
   <div id="adminBanner" style="display:none;"></div>
   <div class="bd-time-bar">
     <span class="bd-flag">🇧🇩</span>
-    <span class="bd-time-label">বাংলাদেশ সময়</span>
+    <span class="bd-time-label">Bangladesh Time</span>
     <span class="bd-time-clock" id="bdClock">--:--:-- --</span>
   </div>
 
@@ -52,20 +52,20 @@
       <div class="card-header-icon"><span class="brand-mark">S</span></div>
       <div>
         <h2>Quick Paste Login</h2>
-        <p>Paste করলেই Auto Login — ক্লিক করার দরকার নেই</p>
+        <p>Paste to auto-login — no click needed</p>
       </div>
     </div>
     <div class="card-body">
       <div>
         <div class="combo-label-row">
-          <label>Paste করুন (Tab দিয়ে আলাদা)</label>
+          <label>Paste (separate with Tab)</label>
           <div class="combo-btn-group">
-            <button id="saveBtn" class="save-btn" title="এই ID টা list এ সেভ করুন">Save</button>
-            <button id="pasteBtn" class="paste-btn" title="Clipboard থেকে Paste করুন">Paste</button>
+            <button id="saveBtn" class="save-btn" title="Save this ID to the list">Save</button>
+            <button id="pasteBtn" class="paste-btn" title="Paste from clipboard">Paste</button>
           </div>
         </div>
-        <textarea id="comboInput" rows="2" placeholder="UID Password 2FA_Secret (2FA না থাকলে শুধু UID Password দিন)"></textarea>
-        <div class="input-hint">UID[Tab]Password — অথবা — UID[Tab]Password[Tab]2FA_Secret · valid data দিলেই auto start</div>
+        <textarea id="comboInput" rows="2" placeholder="UID Password 2FA_Secret (use UID Password only without 2FA)"></textarea>
+        <div class="input-hint">UID[Tab]Password — or — UID[Tab]Password[Tab]2FA_Secret · auto-starts with valid data</div>
       </div>
 
       <div id="parsedRow" class="parsed-row" style="display:none;">
@@ -99,50 +99,50 @@
       </div>
 
       <div id="progressWrap" class="progress-wrap" style="display:none;">
-        <div class="progress-row"><span id="stageLabel">প্রস্তুত...</span><span id="stagePct">0%</span></div>
+        <div class="progress-row"><span id="stageLabel">Ready...</span><span id="stagePct">0%</span></div>
         <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
       </div>
 
       <div class="login-actions">
-        <div class="login-status" id="loginStatus">UID ও Password দিলেই Auto Login শুরু হবে</div>
+        <div class="login-status" id="loginStatus">Enter UID and Password to start auto-login</div>
         <button class="stop-btn" id="stopBtn" type="button" disabled>Stop / Off</button>
       </div>
 
       <div id="savedAccountsWrap" class="saved-wrap" style="display:none;">
         <div class="saved-header">
           <label>Save ID</label>
-          <button id="clearAllBtn" class="clear-all-btn" title="সব মুছে ফেলুন">Clear All</button>
+          <button id="clearAllBtn" class="clear-all-btn" title="Delete all saved IDs">Clear All</button>
         </div>
         <div id="savedAccountsList" class="saved-list"></div>
       </div>
       <div id="loginHistoryWrap" class="saved-wrap" style="display:none;">
         <div class="saved-header">
-          <label>Login করা ID — click করলে login হবে</label>
-          <span style="font-size:10px;color:rgba(255,255,255,.3)">আলাদা history</span>
+          <label>Logged-in IDs — click to login</label>
+          <span style="font-size:10px;color:rgba(255,255,255,.3)">Login history</span>
         </div>
         <div id="loginHistoryList" class="saved-list"></div>
       </div>
 
       <div id="successBox" class="success-box" style="display:none;">
-        <p>✅ ID সফলভাবে লগইন হয়েছে!</p>
+        <p>✅ ID logged in successfully!</p>
         <small id="usedCode">2FA: ------</small>
       </div>
 
       <div class="bin-tools">
-        <label class="bin-label" for="binInput">BIN number save করুন</label>
+        <label class="bin-label" for="binInput">Save BIN number</label>
         <div class="bin-entry">
           <input id="binInput" type="text" inputmode="numeric" placeholder="24789805234xxxx" maxlength="32"/>
           <button id="saveBinBtn" class="bin-save" type="button">Save</button>
         </div>
         <div id="binList" class="bin-list"></div>
-        <a class="payate-link" href="https://www.payate.com/best-credit-cards/" target="_blank" rel="noreferrer">Best Credit Cards খুলুন ↗</a>
+        <a class="payate-link" href="https://www.payate.com/best-credit-cards/" target="_blank" rel="noreferrer">Open Best Credit Cards ↗</a>
       </div>
     </div>
   </div>
 
   <div class="popup-footer">
     <span>Dev: <strong>Alihsan Shourov</strong></span>
-    <a class="whatsapp-link" href="https://wa.me/8801709281334?text=Assalamu%20Alaikum%2C%20Shourov%20FB%20AutoLogin%20niye%20kotha%20bolte%20chai" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp inbox খুলুন" title="WhatsApp inbox খুলুন">
+    <a class="whatsapp-link" href="https://wa.me/8801709281334?text=Assalamu%20Alaikum%2C%20Shourov%20FB%20AutoLogin%20niye%20kotha%20bolte%20chai" target="_blank" rel="noopener noreferrer" aria-label="Open WhatsApp inbox" title="Open WhatsApp inbox">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 2.2a9.7 9.7 0 0 0-8.34 14.65L2.2 21.8l5.1-1.42A9.8 9.8 0 1 0 12 2.2Zm0 17.75a8.05 8.05 0 0 1-4.1-1.12l-.29-.17-3.03.84.82-2.95-.19-.3A8.05 8.05 0 1 1 12 19.95Zm4.42-6.03c-.24-.12-1.42-.7-1.64-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.02-.38-1.94-1.2-.72-.64-1.2-1.43-1.34-1.67-.14-.24-.02-.37.1-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.2-.47-.4-.4-.54-.41h-.46c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.69 2.58 4.1 3.62.57.25 1.02.4 1.37.51.58.18 1.1.16 1.51.1.46-.07 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28Z"/>
       </svg>

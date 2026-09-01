@@ -364,10 +364,10 @@ router.get("/extension/check", async (req, res) => {
   const latestVersion = data.extensionVersion ?? "1.6.3";
 
   if (!data.extensionEnabled) {
-    return void res.json({ allowed: false, reason: "Extension বন্ধ আছে (Admin দ্বারা)", broadcastMessage: data.broadcastMessage ?? null, notification: null, latestVersion });
+    return void res.json({ allowed: false, reason: "Extension is disabled by admin.", broadcastMessage: data.broadcastMessage ?? null, notification: null, latestVersion });
   }
   if (userKey && data.users[userKey]?.isBlocked) {
-    return void res.json({ allowed: false, reason: "আপনি Block করা আছেন। Admin এর সাথে যোগাযোগ করুন।", broadcastMessage: data.broadcastMessage ?? null, notification: null, latestVersion });
+    return void res.json({ allowed: false, reason: "You are blocked. Please contact the admin.", broadcastMessage: data.broadcastMessage ?? null, notification: null, latestVersion });
   }
 
   // One browser/extension installation is one admin user, regardless of Facebook IDs.
